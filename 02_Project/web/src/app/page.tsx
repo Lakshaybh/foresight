@@ -9,6 +9,7 @@ import { RevealSection } from "@/components/marketing/reveal-section";
 import { HeroHeadline } from "@/components/marketing/hero-headline";
 import { ScrambleLine } from "@/components/marketing/scramble-heading";
 import { Flow3D } from "@/components/marketing/flow-3d";
+import { StatCounter } from "@/components/marketing/stat-counter";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
@@ -102,6 +103,41 @@ export default function HomePage() {
 
               <Flow3D />
             </div>
+          </section>
+
+          {/* Proof — real numbers from the validation dataset */}
+          <section className="relative z-10 px-4 py-16 sm:py-20">
+            <RevealSection className="mx-auto max-w-4xl" stagger={0.08}>
+              <div data-reveal className="text-center">
+                <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--bone-dim)]">
+                  Proven before you ever see it
+                </span>
+              </div>
+              <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {[
+                  { value: 180519, suffix: "", label: "real order records analyzed" },
+                  { value: 51, suffix: "", label: "product categories covered" },
+                  { value: 6, suffix: "/6", label: "engineered risk signals caught" },
+                  { value: 0, suffix: "", label: "false positives raised" },
+                ].map((stat) => (
+                  <div key={stat.label} data-reveal>
+                    <BezelCard className="h-full" glow>
+                      <div className="flex h-full flex-col items-center justify-center gap-1.5 px-4 py-7 text-center">
+                        <div className="font-mono text-3xl font-semibold text-[var(--teal)] sm:text-4xl">
+                          <StatCounter value={stat.value} suffix={stat.suffix} />
+                        </div>
+                        <p className="text-xs text-[var(--bone-dim)]">{stat.label}</p>
+                      </div>
+                    </BezelCard>
+                  </div>
+                ))}
+              </div>
+              <p data-reveal className="mx-auto mt-8 max-w-md text-center text-xs text-[var(--bone-dim)]">
+                Verified during development against a real supply-chain
+                dataset, not simulated for this page. See the same detection
+                logic run on your own data next.
+              </p>
+            </RevealSection>
           </section>
 
           {/* Evidence / credibility */}
