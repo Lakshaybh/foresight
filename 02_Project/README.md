@@ -58,6 +58,8 @@ python scripts/ingest_dataco.py             # actually load into Postgres
 - [x] DataCo CSV ingestion script — loaded live into Postgres and verified: 51
   categories, 11 departments, 20,652 customers, 118 products, 65,752 orders,
   180,519 order items, zero orphaned foreign keys
-- [ ] Synthetic supplier/inventory/purchase-order layer
+- [x] Synthetic supplier/inventory/purchase-order layer — 5 warehouses, 131
+  suppliers, 9,558 purchase orders, 19,116 inventory snapshots, drift-demo
+  scenario verified working (see `scripts/generate_synthetic.py`)
 - [ ] Detection, forecasting, decision engine
 - [ ] Gated onboarding (homepage, login, admin approval)
