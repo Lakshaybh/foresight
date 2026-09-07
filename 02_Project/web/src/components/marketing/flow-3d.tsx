@@ -15,14 +15,36 @@ const NODES = [
   { n: "06", title: "Track outcome", body: "See whether the call actually paid off.", color: "var(--orange)" },
 ];
 
-const WIDTH = 640;
-const CENTER = 320;
-const AMP = 150;
-const ROW = 116;
-const TOP_PAD = 60;
+const WIDTH = 760;
+const CENTER = 380;
+const AMP = 230;
+const ROW = 150;
+const TOP_PAD = 70;
+
+// A real 2x3 rectangle instead of a zigzag: top row runs left-to-right
+// (Connect, Detect, Forecast), then drops down and runs back right-to-left
+// on the bottom row (Decide, You approve, Track outcome) — a clean
+// boustrophedon traversal so the connecting line never has to cross itself.
+const COL_X = [CENTER - AMP, CENTER, CENTER + AMP];
+const ROW_Y = [TOP_PAD, TOP_PAD + ROW];
+const ROWS: number[][] = [[0, 1, 2], [3, 4, 5]];
+
+const NODE_POSITIONS: Record<number, { x: number; y: number }> = {
+  0: { x: COL_X[0], y: ROW_Y[0] },
+  1: { x: COL_X[1], y: ROW_Y[0] },
+  2: { x: COL_X[2], y: ROW_Y[0] },
+  3: { x: COL_X[2], y: ROW_Y[1] },
+  4: { x: COL_X[1], y: ROW_Y[1] },
+  5: { x: COL_X[0], y: ROW_Y[1] },
+};
 
 function nodePoint(i: number) {
-  return { x: CENTER + (i % 2 === 0 ? -AMP : AMP), y: TOP_PAD + i * ROW };
+  return NODE_POSITIONS[i];
+}
+
+function nodeDepth(i: number) {
+  const rowIndex = ROWS.findIndex((row) => row.includes(i));
+  return rowIndex * 60;
 }
 
 // Smooth S-curve through every node center — a curved snake, not a
@@ -40,15 +62,17 @@ function buildSpinePath(): string {
   return d;
 }
 
-// The loop-back: outcome tracking (last node) feeds back into detection
-// (node 1) — true to how the product actually works, and gives the end of
-// the flow somewhere to go instead of just stopping.
+// The loop-back: outcome tracking (the last node, bottom-left) feeds back
+// into detection (node 2, top-center) — true to how the product actually
+// works. Routed up the LEFT side, since the main flow already uses the
+// right side to drop from the top row to the bottom row — keeps the two
+// paths from crossing.
 function buildLoopBackPath(): string {
   const last = nodePoint(NODES.length - 1);
   const detect = nodePoint(1);
-  const outX = CENTER - AMP - 90;
-  const midY = (last.y + detect.y) / 2;
-  return `M ${last.x - 30},${last.y + 6} C ${outX},${last.y + 30} ${outX},${midY} ${outX},${midY} S ${outX},${detect.y - 10} ${detect.x - 34},${detect.y - 4}`;
+  const outX = COL_X[0] - 90;
+  const topY = TOP_PAD - 40;
+  return `M ${last.x - 15},${last.y - 15} C ${outX},${last.y} ${outX},${topY} ${outX},${topY} C ${outX},${topY} ${detect.x - 40},${topY} ${detect.x - 20},${detect.y - 30}`;
 }
 
 export function Flow3D() {
@@ -57,7 +81,7 @@ export function Flow3D() {
 
   const spineD = useMemo(buildSpinePath, []);
   const loopD = useMemo(buildLoopBackPath, []);
-  const height = TOP_PAD * 2 + (NODES.length - 1) * ROW;
+  const height = TOP_PAD * 2 + (ROWS.length - 1) * ROW;
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -69,10 +93,10 @@ export function Flow3D() {
       if (!prefersReduced) {
         gsap.fromTo(
           group,
-          { rotateY: -34, rotateX: 14, opacity: 0 },
+          { rotateY: -18, rotateX: 10, opacity: 0 },
           {
-            rotateY: -18,
-            rotateX: 8,
+            rotateY: 0,
+            rotateX: 0,
             opacity: 1,
             duration: 1.4,
             ease: "power3.out",
@@ -80,7 +104,7 @@ export function Flow3D() {
           }
         );
       } else {
-        gsap.set(group, { rotateY: -18, rotateX: 8, opacity: 1 });
+        gsap.set(group, { rotateY: 0, rotateX: 0, opacity: 1 });
       }
 
       const cards = group.querySelectorAll("[data-node]");
@@ -128,47 +152,23 @@ export function Flow3D() {
       }
     }, wrap);
 
-    if (prefersReduced) return () => ctx.revert();
-
-    const onMove = (e: PointerEvent) => {
-      const rect = wrap.getBoundingClientRect();
-      const px = (e.clientX - rect.left) / rect.width - 0.5;
-      const py = (e.clientY - rect.top) / rect.height - 0.5;
-      gsap.to(group, {
-        rotateX: 8 - py * 10,
-        rotateY: -18 + px * 14,
-        duration: 0.6,
-        ease: "power2.out",
-      });
-    };
-    const onLeave = () => {
-      gsap.to(group, { rotateX: 8, rotateY: -18, duration: 0.8, ease: "power3.out" });
-    };
-
-    wrap.addEventListener("pointermove", onMove);
-    wrap.addEventListener("pointerleave", onLeave);
-
-    return () => {
-      wrap.removeEventListener("pointermove", onMove);
-      wrap.removeEventListener("pointerleave", onLeave);
-      ctx.revert();
-    };
+    return () => ctx.revert();
   }, []);
 
   return (
     <div
       ref={wrapRef}
-      className="relative mx-auto max-w-4xl overflow-x-auto py-10"
+      className="relative mx-auto flex max-w-4xl justify-center overflow-x-auto py-10"
       style={{ perspective: "1600px" }}
     >
       <div
         ref={groupRef}
-        className="relative mx-auto"
+        className="relative shrink-0"
         style={{ transformStyle: "preserve-3d", width: `${WIDTH}px`, height: `${height}px` }}
       >
         <svg
           className="absolute inset-0 h-full w-full overflow-visible"
-          style={{ transform: "translateZ(-10px)" }}
+          style={{ transform: "translateZ(150px)" }}
           viewBox={`0 0 ${WIDTH} ${height}`}
         >
           <defs>
@@ -188,18 +188,17 @@ export function Flow3D() {
             d={loopD}
             data-loop
             fill="none"
-            stroke="var(--orange)"
-            strokeWidth="1.75"
-            strokeDasharray="1 6"
+            stroke="url(#spineGradient)"
+            strokeWidth="2"
             strokeLinecap="round"
-            opacity={0.85}
+            opacity={0.9}
             markerEnd="url(#loopArrow)"
           />
           <text
-            x={CENTER - AMP - 90}
-            y={(nodePoint(NODES.length - 1).y + nodePoint(1).y) / 2}
+            x={COL_X[0] - 90}
+            y={TOP_PAD - 40}
             textAnchor="middle"
-            className="fill-[var(--orange)]"
+            className="fill-[var(--bone-dim)]"
             fontFamily="var(--font-plex-mono)"
             fontSize="10"
             letterSpacing="0.05em"
@@ -214,18 +213,19 @@ export function Flow3D() {
           style={{
             offsetPath: `path("${spineD}")`,
             offsetRotate: "0deg",
+            transform: "translateZ(150px)",
             animation: "flow-pulse 5s linear infinite",
           }}
         />
 
         {NODES.map((node, i) => {
           const p = nodePoint(i);
-          const depth = i * 26;
+          const depth = nodeDepth(i);
           return (
             <div
               key={node.n}
               data-node
-              className="absolute flex w-[260px] -translate-x-1/2 -translate-y-1/2 items-center gap-4 rounded-2xl border border-[var(--line)] bg-[var(--void-2)]/90 p-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)] backdrop-blur"
+              className="absolute flex w-[200px] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-2xl border border-[var(--line)] bg-[var(--void-2)]/90 p-3 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)] backdrop-blur"
               style={{
                 left: `${p.x}px`,
                 top: `${p.y}px`,
