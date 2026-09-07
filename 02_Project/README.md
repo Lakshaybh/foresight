@@ -78,9 +78,14 @@ python scripts/ingest_dataco.py             # actually load into Postgres
 - [x] Gated onboarding — homepage, login (Google/LinkedIn/Email + separate
   Admin Login), T&C acceptance, pending-approval gate, and an admin
   approve/reject screen. Enforced by `src/proxy.ts` (route protection) and
-  Supabase RLS (`is_admin()`), not client-trusted checks. Homepage rebuilt
-  with a real visual identity — see "Remaining setup" below for what's not
-  wired yet.
+  Supabase RLS (`is_admin()`), not client-trusted checks. See "Remaining
+  setup" below for what's not wired yet.
+- [x] Homepage v2 — cinematic dark "command center" rebuild: GSAP + Lenis
+  smooth scroll, scroll-triggered reveals, scramble-text hero subtitle, a
+  canvas particle atmosphere. Teal/amber/orange palette mirrors the
+  decision catalog's own severity language (normal/monitor/escalate), not
+  arbitrary color choice. Scoped to `.marketing-dark` in `globals.css` —
+  the authenticated app keeps its light theme.
 
 ## Remaining setup for onboarding to fully work
 
