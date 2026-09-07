@@ -33,10 +33,7 @@ from app.config import settings  # noqa: E402
 SEED = 42
 SUPPLIERS_PER_CATEGORY = (2, 3)  # inclusive range, chosen per category
 DRIFT_SUPPLIER_COUNT = 6         # explicitly engineered "slipping supplier" demo cases
-DRIFT_WINDOW_WEEKS = 10          # how far back from the end the drift ramps up
-PO_INTERVAL_DAYS = 14
-SAFETY_STOCK_LEAD_MULTIPLE = 1.0
-INITIAL_STOCK_LEAD_MULTIPLE = 2.0
+PO_INTERVAL_DAYS = 14  # informs the target-level formula, not a fixed order schedule
 
 NAME_PREFIXES = [
     "Atlas", "Meridian", "Summit", "Horizon", "Vanguard", "Crestline",
@@ -145,7 +142,6 @@ def main() -> None:
             print(f"supplier: inserted {len(all_suppliers)} rows across {len(categories)} categories")
 
             lead_time_by_supplier = {s[0]: s[2] for s in all_suppliers}
-            drift_start_date = max_date - timedelta(weeks=DRIFT_WINDOW_WEEKS)
 
             # --- assign each product a primary supplier from its category ---
             # Must happen BEFORE picking drift-demo suppliers below: with only
@@ -161,61 +157,138 @@ def main() -> None:
                 supplier_id, _ = rng.choice(bucket)
                 primary_supplier_by_product[product_id] = supplier_id
 
-            # --- pick and flag the engineered drift-demo suppliers ---
-            # Only from suppliers actually assigned to at least one product,
-            # so every flagged "slipping supplier" has real order history to
-            # slip in.
-            used_supplier_ids = list(set(primary_supplier_by_product.values()))
-            drift_supplier_ids = set(
-                rng.sample(used_supplier_ids, min(DRIFT_SUPPLIER_COUNT, len(used_supplier_ids)))
-            )
-            if drift_supplier_ids:
-                cur.execute(
-                    "UPDATE supplier SET engineered_drift_demo = true WHERE supplier_id = ANY(%s)",
-                    (list(drift_supplier_ids),),
-                )
-            print(f"supplier: flagged {len(drift_supplier_ids)} as engineered_drift_demo "
-                  f"(from {len(used_supplier_ids)} suppliers with an assigned product)")
-
             # --- avg daily demand per product, from real sales ---
             avg_daily_demand: dict[str, float] = {
                 pid: total_qty_by_product.get(pid, 0) / total_days
                 for pid in product_category
             }
 
-            # --- purchase orders ---
-            po_rows = []
-            po_receipts: dict[tuple[str, date], int] = {}  # (product_id, week) -> qty received
+            # --- real weekly sales per product, from order_item + sales_order ---
+            cur.execute("""
+                SELECT oi.product_id, date_trunc('week', so.order_date)::date, SUM(oi.quantity)
+                FROM order_item oi
+                JOIN sales_order so ON so.order_id = oi.order_id
+                GROUP BY oi.product_id, date_trunc('week', so.order_date)
+            """)
+            weekly_sales: dict[tuple[str, date], int] = {(r[0], r[1]): r[2] for r in cur.fetchall()}
 
-            for product_id, category_id in product_category.items():
-                supplier_id = primary_supplier_by_product.get(product_id)
-                if not supplier_id:
-                    continue
-                lead_time = lead_time_by_supplier[supplier_id]
-                demand = avg_daily_demand[product_id]
-                is_drift = supplier_id in drift_supplier_ids
+            # deterministic home warehouse per product
+            warehouse_list = list(warehouse_ids.values())
+            home_warehouse_by_product = {
+                pid: warehouse_list[i % len(warehouse_list)]
+                for i, pid in enumerate(sorted(product_category))
+            }
 
-                cursor_date = min_date
-                while cursor_date <= max_date:
-                    qty = max(1, round(demand * PO_INTERVAL_DAYS * 1.2))
-                    expected = cursor_date + timedelta(days=lead_time)
+            weeks = list(daterange_weeks(min_date, max_date))
+            RAMP_LENGTH = 5  # the drift ramps over a product's own last N orders
 
-                    if is_drift and cursor_date >= drift_start_date:
-                        span = max(1, (max_date - drift_start_date).days)
-                        progress = (cursor_date - drift_start_date).days / span
-                        delay = round(progress * 7) + rng.randint(0, 1)
-                    else:
-                        delay = rng.choice([0, 0, 0, 0, 1, -1, 1, 2])
+            def simulate(drift_start_index_by_product: dict[str, int]) -> tuple[list, list, dict]:
+                """Runs the full weekly order-up-to-level simulation for every
+                product. Returns (po_rows, snapshot_rows, order_count_by_product).
 
-                    actual = expected + timedelta(days=max(delay, -lead_time + 1))
+                Real, stock-responsive policy: each week, receive anything
+                that has arrived, subtract real sales, then look at stock
+                POSITION (on-hand + already-ordered-but-not-yet-arrived) and
+                order enough to bring it back to a target level. This
+                replaces an earlier, broken version that ordered a fixed
+                quantity on a fixed schedule regardless of actual stock,
+                which let inventory balloon to hundreds of days of cover
+                over the 3-year simulation and masked any stockout risk.
 
-                    po_rows.append((supplier_id, product_id, qty, cursor_date, expected, actual))
+                Drift is applied by ORDER SEQUENCE POSITION, not calendar
+                date: once a drift-flagged product's order counter reaches
+                its assigned start index, the next RAMP_LENGTH orders get an
+                increasing delay. This deliberately ties the engineered
+                scenario to "this product's own most recent orders" — the
+                exact thing the detection engine looks at — rather than a
+                fixed calendar cutoff, which earlier attempts showed breaks
+                down because different products' real DataCo sales histories
+                end at different points (a genuine, honest fact about the
+                data — see the code history / daily log for what was tried).
+                """
+                po_rows_ = []
+                snapshot_rows_ = []
+                order_count_by_product: dict[str, int] = {}
 
-                    receipt_week = week_start(actual)
-                    key = (product_id, receipt_week)
-                    po_receipts[key] = po_receipts.get(key, 0) + qty
+                for product_id in product_category:
+                    supplier_id = primary_supplier_by_product.get(product_id)
+                    if not supplier_id:
+                        continue
+                    lead_time = lead_time_by_supplier[supplier_id]
+                    demand = avg_daily_demand[product_id]
+                    warehouse_id = home_warehouse_by_product[product_id]
+                    drift_start_index = drift_start_index_by_product.get(product_id)
 
-                    cursor_date += timedelta(days=PO_INTERVAL_DAYS)
+                    safety_stock = demand * lead_time
+                    target_level = demand * (lead_time + PO_INTERVAL_DAYS / 2 + 2)
+
+                    stock = target_level
+                    pending: list[list] = []
+                    order_count = 0
+
+                    for wk in weeks:
+                        arrived = sum(q for arr, q in pending if arr <= wk)
+                        pending = [[arr, q] for arr, q in pending if arr > wk]
+                        stock += arrived
+
+                        sold = weekly_sales.get((product_id, wk), 0)
+                        stock = max(stock - sold, 0)
+
+                        snapshot_rows_.append((
+                            product_id, warehouse_id, wk,
+                            round(stock), round(safety_stock), round(demand, 2),
+                        ))
+
+                        stock_position = stock + sum(q for _, q in pending)
+                        order_qty = max(0, round(target_level - stock_position))
+                        if order_qty > 0:
+                            expected = wk + timedelta(days=lead_time)
+
+                            if drift_start_index is not None and order_count >= drift_start_index:
+                                progress = (order_count - drift_start_index) / RAMP_LENGTH
+                                delay = round(min(progress, 1.0) * 7) + rng.randint(0, 1)
+                            else:
+                                delay = rng.choice([0, 0, 0, 0, 1, -1, 1, 2])
+
+                            actual = expected + timedelta(days=max(delay, -lead_time + 1))
+                            po_rows_.append((supplier_id, product_id, order_qty, wk, expected, actual))
+                            pending.append([week_start(actual), order_qty])
+                            order_count += 1
+
+                    order_count_by_product[product_id] = order_count
+
+                return po_rows_, snapshot_rows_, order_count_by_product
+
+            # --- pass 1: simulate with no drift, to see REAL order frequency
+            # per product under the honest, stock-responsive policy. Two
+            # earlier proxy heuristics (average demand, then + recent-sales-
+            # activity) both failed to reliably predict this — the discrete,
+            # rounding-driven reorder cadence this policy produces isn't
+            # something you can guess from demand alone.
+            _, _, order_count_baseline = simulate(drift_start_index_by_product={})
+
+            MIN_ORDERS_FOR_DRIFT_DEMO = 10  # comfortably above the detector's own minimum of 6
+            eligible_products = [
+                pid for pid, count in order_count_baseline.items()
+                if count >= MIN_ORDERS_FOR_DRIFT_DEMO
+            ]
+            drift_products = rng.sample(eligible_products, min(DRIFT_SUPPLIER_COUNT, len(eligible_products)))
+            drift_supplier_ids = {primary_supplier_by_product[pid] for pid in drift_products}
+            drift_start_index_by_product = {
+                pid: max(0, order_count_baseline[pid] - RAMP_LENGTH) for pid in drift_products
+            }
+
+            if drift_supplier_ids:
+                cur.execute(
+                    "UPDATE supplier SET engineered_drift_demo = true WHERE supplier_id = ANY(%s)",
+                    (list(drift_supplier_ids),),
+                )
+            print(f"supplier: flagged {len(drift_supplier_ids)} as engineered_drift_demo "
+                  f"(from {len(eligible_products)} products with >= {MIN_ORDERS_FOR_DRIFT_DEMO} real orders)")
+
+            # --- pass 2: simulate for real, now that we know which products'
+            # last few orders should actually drift ---
+            po_rows, snapshot_rows, _ = simulate(drift_start_index_by_product)
 
             for i in range(0, len(po_rows), 5000):
                 batch = po_rows[i:i + 5000]
@@ -227,45 +300,6 @@ def main() -> None:
                     batch,
                 )
             print(f"purchase_order: inserted {len(po_rows)} rows")
-
-            # --- real weekly sales per product, from order_item + sales_order ---
-            cur.execute("""
-                SELECT oi.product_id, date_trunc('week', so.order_date)::date, SUM(oi.quantity)
-                FROM order_item oi
-                JOIN sales_order so ON so.order_id = oi.order_id
-                GROUP BY oi.product_id, date_trunc('week', so.order_date)
-            """)
-            weekly_sales: dict[tuple[str, date], int] = {(r[0], r[1]): r[2] for r in cur.fetchall()}
-
-            # --- inventory ledger, one row per product per week ---
-            weeks = list(daterange_weeks(min_date, max_date))
-            snapshot_rows = []
-
-            # deterministic home warehouse per product
-            warehouse_list = list(warehouse_ids.values())
-            home_warehouse_by_product = {
-                pid: warehouse_list[i % len(warehouse_list)]
-                for i, pid in enumerate(sorted(product_category))
-            }
-
-            for product_id in product_category:
-                supplier_id = primary_supplier_by_product.get(product_id)
-                lead_time = lead_time_by_supplier.get(supplier_id, 7)
-                demand = avg_daily_demand[product_id]
-                warehouse_id = home_warehouse_by_product[product_id]
-
-                stock = demand * lead_time * INITIAL_STOCK_LEAD_MULTIPLE
-                safety_stock = demand * lead_time * SAFETY_STOCK_LEAD_MULTIPLE
-
-                for wk in weeks:
-                    sold = weekly_sales.get((product_id, wk), 0)
-                    received = po_receipts.get((product_id, wk), 0)
-                    stock = max(stock - sold + received, 0)
-
-                    snapshot_rows.append((
-                        product_id, warehouse_id, wk,
-                        round(stock), round(safety_stock), round(demand, 2),
-                    ))
 
             for i in range(0, len(snapshot_rows), 5000):
                 batch = snapshot_rows[i:i + 5000]
