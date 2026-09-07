@@ -61,5 +61,9 @@ python scripts/ingest_dataco.py             # actually load into Postgres
 - [x] Synthetic supplier/inventory/purchase-order layer — 5 warehouses, 131
   suppliers, 9,558 purchase orders, 19,116 inventory snapshots, drift-demo
   scenario verified working (see `scripts/generate_synthetic.py`)
-- [ ] Detection, forecasting, decision engine
+- [x] Detection engine — supplier lead-time drift (modified z-score baseline).
+  6/6 engineered drift suppliers detected, 0 false positives among the other
+  70. Live at `GET /signals` and `POST /signals/detect/supplier-lead-time`.
+- [ ] Forecast engine (days-of-stock-remaining, stockout risk)
+- [ ] Decision engine (map signals to the 5-item decision catalog)
 - [ ] Gated onboarding (homepage, login, admin approval)
