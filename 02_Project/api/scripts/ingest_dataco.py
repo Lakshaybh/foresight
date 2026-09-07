@@ -202,8 +202,10 @@ def run_load(df: pl.DataFrame) -> None:
 
 
 def fetch_id_map(cur, table: str) -> dict:
+    # Cast the uuid PK to str — psycopg returns Python UUID objects, which
+    # Polars can't use as replacement values (they aren't a primitive type).
     cur.execute(f"SELECT source_id, {table_pk(table)} FROM {table}")
-    return {row[0]: row[1] for row in cur.fetchall()}
+    return {row[0]: str(row[1]) for row in cur.fetchall()}
 
 
 def table_pk(table: str) -> str:
