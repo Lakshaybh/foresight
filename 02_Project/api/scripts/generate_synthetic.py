@@ -180,11 +180,12 @@ def main() -> None:
             }
 
             weeks = list(daterange_weeks(min_date, max_date))
-            RAMP_LENGTH = 5  # the drift ramps over a product's own last N orders
+            RAMP_LENGTH = 6       # the drift ramps over a supplier's last N orders
+            MAX_RAMP_DELAY = 11   # a real supply-chain-crisis magnitude, not a mild wobble
 
-            def simulate(drift_start_index_by_product: dict[str, int]) -> tuple[list, list, dict]:
+            def simulate(drift_start_count_by_supplier: dict[str, int]) -> tuple[list, list, dict]:
                 """Runs the full weekly order-up-to-level simulation for every
-                product. Returns (po_rows, snapshot_rows, order_count_by_product).
+                product. Returns (po_rows, snapshot_rows, order_count_by_supplier).
 
                 Real, stock-responsive policy: each week, receive anything
                 that has arrived, subtract real sales, then look at stock
@@ -195,20 +196,20 @@ def main() -> None:
                 which let inventory balloon to hundreds of days of cover
                 over the 3-year simulation and masked any stockout risk.
 
-                Drift is applied by ORDER SEQUENCE POSITION, not calendar
-                date: once a drift-flagged product's order counter reaches
-                its assigned start index, the next RAMP_LENGTH orders get an
-                increasing delay. This deliberately ties the engineered
-                scenario to "this product's own most recent orders" — the
-                exact thing the detection engine looks at — rather than a
-                fixed calendar cutoff, which earlier attempts showed breaks
-                down because different products' real DataCo sales histories
+                Drift is applied by ORDER SEQUENCE POSITION on a shared,
+                per-SUPPLIER counter (not per product): a supplier having
+                trouble affects all of its shipments, not one arbitrarily
+                chosen SKU, and the detection engine groups purchase orders
+                by supplier — applying drift per-product let non-drifting
+                products sharing the same supplier dilute the signal with
+                ordinary noise. Sequence position (not a calendar date) is
+                used because different products' real DataCo sales histories
                 end at different points (a genuine, honest fact about the
-                data — see the code history / daily log for what was tried).
+                data — see the daily log for what was tried and why).
                 """
                 po_rows_ = []
                 snapshot_rows_ = []
-                order_count_by_product: dict[str, int] = {}
+                order_count_by_supplier: dict[str, int] = {}
 
                 for product_id in product_category:
                     supplier_id = primary_supplier_by_product.get(product_id)
@@ -217,14 +218,13 @@ def main() -> None:
                     lead_time = lead_time_by_supplier[supplier_id]
                     demand = avg_daily_demand[product_id]
                     warehouse_id = home_warehouse_by_product[product_id]
-                    drift_start_index = drift_start_index_by_product.get(product_id)
+                    drift_start_count = drift_start_count_by_supplier.get(supplier_id)
 
                     safety_stock = demand * lead_time
                     target_level = demand * (lead_time + PO_INTERVAL_DAYS / 2 + 2)
 
                     stock = target_level
                     pending: list[list] = []
-                    order_count = 0
 
                     for wk in weeks:
                         arrived = sum(q for arr, q in pending if arr <= wk)
@@ -243,39 +243,52 @@ def main() -> None:
                         order_qty = max(0, round(target_level - stock_position))
                         if order_qty > 0:
                             expected = wk + timedelta(days=lead_time)
+                            supplier_order_count = order_count_by_supplier.get(supplier_id, 0)
 
-                            if drift_start_index is not None and order_count >= drift_start_index:
-                                progress = (order_count - drift_start_index) / RAMP_LENGTH
-                                delay = round(min(progress, 1.0) * 7) + rng.randint(0, 1)
+                            if drift_start_count is not None and supplier_order_count >= drift_start_count:
+                                progress = (supplier_order_count - drift_start_count) / RAMP_LENGTH
+                                delay = round(min(progress, 1.0) * MAX_RAMP_DELAY) + rng.randint(0, 1)
                             else:
                                 delay = rng.choice([0, 0, 0, 0, 1, -1, 1, 2])
 
                             actual = expected + timedelta(days=max(delay, -lead_time + 1))
                             po_rows_.append((supplier_id, product_id, order_qty, wk, expected, actual))
                             pending.append([week_start(actual), order_qty])
-                            order_count += 1
+                            order_count_by_supplier[supplier_id] = supplier_order_count + 1
 
-                    order_count_by_product[product_id] = order_count
-
-                return po_rows_, snapshot_rows_, order_count_by_product
+                return po_rows_, snapshot_rows_, order_count_by_supplier
 
             # --- pass 1: simulate with no drift, to see REAL order frequency
-            # per product under the honest, stock-responsive policy. Two
-            # earlier proxy heuristics (average demand, then + recent-sales-
-            # activity) both failed to reliably predict this — the discrete,
-            # rounding-driven reorder cadence this policy produces isn't
-            # something you can guess from demand alone.
-            _, _, order_count_baseline = simulate(drift_start_index_by_product={})
+            # per SUPPLIER (aggregated across all of its products) under the
+            # honest, stock-responsive policy. Proxies based on demand alone
+            # can't predict this — the discrete, rounding-driven reorder
+            # cadence this policy produces has to be observed, not guessed.
+            _, _, order_count_baseline = simulate(drift_start_count_by_supplier={})
 
-            MIN_ORDERS_FOR_DRIFT_DEMO = 10  # comfortably above the detector's own minimum of 6
-            eligible_products = [
-                pid for pid, count in order_count_baseline.items()
-                if count >= MIN_ORDERS_FOR_DRIFT_DEMO
+            # Restricted to single-product suppliers: the per-supplier order
+            # counter above is incremented in per-PRODUCT iteration order
+            # (all of one product's weeks simulated before the next product
+            # starts), which only matches true chronological order when a
+            # supplier serves exactly one product. For a multi-product
+            # supplier, "the last N orders by this counter" can land on a
+            # scattered, non-recent subset once the detector re-sorts by
+            # real order_date — this was verified directly (one flagged
+            # supplier showed a non-monotonic delay pattern) before adding
+            # this restriction, not assumed.
+            single_product_suppliers = {
+                sid for sid, count in
+                {s: list(primary_supplier_by_product.values()).count(s) for s in set(primary_supplier_by_product.values())}.items()
+                if count == 1
+            }
+
+            MIN_ORDERS_FOR_DRIFT_DEMO = 15  # comfortably above detector minimum (6) + ramp length (6)
+            eligible_suppliers = [
+                sid for sid, count in order_count_baseline.items()
+                if count >= MIN_ORDERS_FOR_DRIFT_DEMO and sid in single_product_suppliers
             ]
-            drift_products = rng.sample(eligible_products, min(DRIFT_SUPPLIER_COUNT, len(eligible_products)))
-            drift_supplier_ids = {primary_supplier_by_product[pid] for pid in drift_products}
-            drift_start_index_by_product = {
-                pid: max(0, order_count_baseline[pid] - RAMP_LENGTH) for pid in drift_products
+            drift_supplier_ids = set(rng.sample(eligible_suppliers, min(DRIFT_SUPPLIER_COUNT, len(eligible_suppliers))))
+            drift_start_count_by_supplier = {
+                sid: max(0, order_count_baseline[sid] - RAMP_LENGTH) for sid in drift_supplier_ids
             }
 
             if drift_supplier_ids:
@@ -284,11 +297,11 @@ def main() -> None:
                     (list(drift_supplier_ids),),
                 )
             print(f"supplier: flagged {len(drift_supplier_ids)} as engineered_drift_demo "
-                  f"(from {len(eligible_products)} products with >= {MIN_ORDERS_FOR_DRIFT_DEMO} real orders)")
+                  f"(from {len(eligible_suppliers)} suppliers with >= {MIN_ORDERS_FOR_DRIFT_DEMO} real orders)")
 
-            # --- pass 2: simulate for real, now that we know which products'
-            # last few orders should actually drift ---
-            po_rows, snapshot_rows, _ = simulate(drift_start_index_by_product)
+            # --- pass 2: simulate for real, now that we know which
+            # suppliers' last few orders should actually drift ---
+            po_rows, snapshot_rows, _ = simulate(drift_start_count_by_supplier)
 
             for i in range(0, len(po_rows), 5000):
                 batch = po_rows[i:i + 5000]
