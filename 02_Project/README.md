@@ -75,5 +75,25 @@ python scripts/ingest_dataco.py             # actually load into Postgres
   decisions (6 escalate_supplier at confidence 0.49-1.0, 11 reorder_now),
   idempotent re-run created 0 duplicates. Live at `GET /decisions` and
   `POST /decisions/run`.
+- [x] Gated onboarding — homepage, login (Google/LinkedIn/Email + separate
+  Admin Login), T&C acceptance, pending-approval gate, and an admin
+  approve/reject screen. Enforced by `src/proxy.ts` (route protection) and
+  Supabase RLS (`is_admin()`), not client-trusted checks. Homepage rebuilt
+  with a real visual identity — see "Remaining setup" below for what's not
+  wired yet.
+
+## Remaining setup for onboarding to fully work
+
+- **Google OAuth**: create an OAuth app in Google Cloud Console, add the
+  client ID/secret to Supabase (Authentication -> Providers -> Google).
+- **LinkedIn OAuth**: create an app in the LinkedIn Developer Portal, add
+  credentials to Supabase (Authentication -> Providers -> LinkedIn (OIDC)).
+- **Email**: works out of the box via Supabase's default email provider for
+  magic links; swap in Brevo as the SMTP provider (Authentication -> Emails
+  -> SMTP Settings) when ready for real deliverability.
+- **First admin account**: sign up once via the app (creates a pending
+  `user_account` row), then manually set that row's `role='admin',
+  status='approved'` directly in Supabase — there's no self-service way to
+  become an admin, by design.
 - [ ] Gated onboarding (homepage, login, admin approval)
 - [ ] Human review UI (approve/reject/snooze a decision) and outcome tracking
