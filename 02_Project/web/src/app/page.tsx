@@ -8,6 +8,7 @@ import { ProductPreview } from "@/components/marketing/product-preview";
 import { RevealSection } from "@/components/marketing/reveal-section";
 import { HeroHeadline } from "@/components/marketing/hero-headline";
 import { ScrambleLine } from "@/components/marketing/scramble-heading";
+import { Flow3D } from "@/components/marketing/flow-3d";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
@@ -30,12 +31,6 @@ function Eyebrow({ n, children }: { n: string; children: React.ReactNode }) {
     </span>
   );
 }
-
-const STEPS = [
-  { n: "01", title: "Connect your data", body: "Upload the spreadsheet you already have — orders, inventory, supplier history. No integration project required." },
-  { n: "02", title: "We watch it daily", body: "Every supplier and every stock level, checked continuously against its own history for early warning signs." },
-  { n: "03", title: "You decide what to do", body: "A ranked recommendation with evidence attached. You approve, reject, or snooze — the system never acts alone." },
-];
 
 const SEGMENTS = [
   { title: "Small e-commerce", body: "Keep bestsellers in stock without babysitting a spreadsheet daily." },
@@ -67,9 +62,11 @@ export default function HomePage() {
                 data-reveal
                 className="mx-auto mt-6 max-w-xl text-balance text-lg text-[var(--bone-dim)]"
               >
-                See emerging operational risks, understand why they&apos;re
-                forming, and decide what to do — before they become expensive
-                problems.
+                Right now, you probably find out about a stockout the day a
+                customer asks where their order is. By then it&apos;s already
+                cost you a sale. We watch your suppliers and your stock every
+                day, so you find out weeks earlier — while there&apos;s still
+                time to do something about it.
               </p>
               <div data-reveal className="mt-9 flex justify-center">
                 <CtaButton href="/login" size="lg">
@@ -88,29 +85,22 @@ export default function HomePage() {
             </RevealSection>
           </section>
 
-          {/* How it works */}
+          {/* How we actually work — 3D pipeline */}
           <section id="how-it-works" className="relative z-10 px-4 py-24 sm:py-32">
             <div className="mx-auto max-w-5xl">
               <RevealSection className="mx-auto max-w-xl text-center">
-                <Eyebrow n="01">The platform</Eyebrow>
+                <Eyebrow n="01">How we work</Eyebrow>
                 <h2 data-reveal className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
-                  One workflow, running quietly every day.
+                  This is the exact pipeline running on your data.
                 </h2>
+                <p data-reveal className="mt-4 text-[var(--bone-dim)]">
+                  Not a diagram we drew for the website — this is the real
+                  sequence: your data goes in one end, a decision with
+                  evidence comes out the other, and nothing moves without you.
+                </p>
               </RevealSection>
 
-              <RevealSection className="mt-14 grid gap-5 sm:grid-cols-3" stagger={0.12}>
-                {STEPS.map((step) => (
-                  <div key={step.n} data-reveal>
-                    <BezelCard className="h-full">
-                      <div className="flex h-full flex-col p-6">
-                        <span className="font-mono text-xs text-[var(--teal)]">{step.n}</span>
-                        <h3 className="mt-3 font-medium text-[var(--bone)]">{step.title}</h3>
-                        <p className="mt-2 text-sm text-[var(--bone-dim)]">{step.body}</p>
-                      </div>
-                    </BezelCard>
-                  </div>
-                ))}
-              </RevealSection>
+              <Flow3D />
             </div>
           </section>
 
@@ -120,13 +110,14 @@ export default function HomePage() {
               <RevealSection stagger={0.1}>
                 <div data-reveal><Eyebrow n="02">No black box</Eyebrow></div>
                 <h2 data-reveal className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
-                  Every recommendation shows its evidence.
+                  You&apos;re right not to trust a black box. So we don&apos;t build one.
                 </h2>
                 <p data-reveal className="mt-4 text-[var(--bone-dim)]">
-                  No paid AI making the call quietly in the background. Plain
-                  statistics, shown next to the simple baseline they&apos;re
-                  measured against — so you can always see why the system
-                  flagged something, not just that it did.
+                  No paid AI making the call quietly in the background. Every
+                  time we flag something, you see the plain math behind it —
+                  right next to the simple baseline it&apos;s being measured
+                  against — so you&apos;re never just asked to take our word
+                  for it.
                 </p>
                 <ul className="mt-6 space-y-3 text-sm">
                   {[
@@ -206,7 +197,7 @@ export default function HomePage() {
               <RevealSection className="mx-auto max-w-xl text-center">
                 <div data-reveal><Eyebrow n="04">Built for</Eyebrow></div>
                 <h2 data-reveal className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
-                  Teams with real stock and real suppliers.
+                  If any of this sounds familiar, we built this for you.
                 </h2>
               </RevealSection>
 
@@ -229,11 +220,13 @@ export default function HomePage() {
           <section className="relative z-10 px-4 pb-32 pt-8">
             <RevealSection className="mx-auto max-w-2xl text-center">
               <h2 data-reveal className="text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
-                See it on your own data.
+                Bring your own data. Let's see what it's been trying to tell you.
               </h2>
               <p data-reveal className="mx-auto mt-4 max-w-md text-[var(--bone-dim)]">
-                Access is reviewed before use — request an account and
-                we&apos;ll follow up.
+                Access is reviewed before use, not because we want to be
+                precious about it — we&apos;d just rather get this right for
+                a few real teams than open the doors to everyone at once.
+                Request access and we&apos;ll follow up.
               </p>
               <div data-reveal className="mt-8 flex justify-center">
                 <CtaButton href="/login" size="lg">
