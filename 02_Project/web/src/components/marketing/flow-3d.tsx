@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -15,10 +15,49 @@ const NODES = [
   { n: "06", title: "Track outcome", body: "See whether the call actually paid off.", color: "var(--orange)" },
 ];
 
+const WIDTH = 640;
+const CENTER = 320;
+const AMP = 150;
+const ROW = 116;
+const TOP_PAD = 60;
+
+function nodePoint(i: number) {
+  return { x: CENTER + (i % 2 === 0 ? -AMP : AMP), y: TOP_PAD + i * ROW };
+}
+
+// Smooth S-curve through every node center — a curved snake, not a
+// straight dashed line, so the pipeline reads as one continuous motion
+// rather than a checklist.
+function buildSpinePath(): string {
+  const pts = NODES.map((_, i) => nodePoint(i));
+  let d = `M ${pts[0].x},${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1];
+    const cur = pts[i];
+    const midY = (prev.y + cur.y) / 2;
+    d += ` C ${prev.x},${midY} ${cur.x},${midY} ${cur.x},${cur.y}`;
+  }
+  return d;
+}
+
+// The loop-back: outcome tracking (last node) feeds back into detection
+// (node 1) — true to how the product actually works, and gives the end of
+// the flow somewhere to go instead of just stopping.
+function buildLoopBackPath(): string {
+  const last = nodePoint(NODES.length - 1);
+  const detect = nodePoint(1);
+  const outX = CENTER - AMP - 90;
+  const midY = (last.y + detect.y) / 2;
+  return `M ${last.x - 30},${last.y + 6} C ${outX},${last.y + 30} ${outX},${midY} ${outX},${midY} S ${outX},${detect.y - 10} ${detect.x - 34},${detect.y - 4}`;
+}
+
 export function Flow3D() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const groupRef = useRef<HTMLDivElement | null>(null);
-  const tilt = useRef({ x: 0, y: 0 });
+
+  const spineD = useMemo(buildSpinePath, []);
+  const loopD = useMemo(buildLoopBackPath, []);
+  const height = TOP_PAD * 2 + (NODES.length - 1) * ROW;
 
   useEffect(() => {
     const wrap = wrapRef.current;
@@ -57,6 +96,36 @@ export function Flow3D() {
           scrollTrigger: { trigger: wrap, start: "top 70%" },
         }
       );
+
+      const spine = group.querySelector<SVGPathElement>("[data-spine]");
+      if (spine) {
+        const len = spine.getTotalLength();
+        gsap.fromTo(
+          spine,
+          { strokeDasharray: len, strokeDashoffset: len },
+          {
+            strokeDashoffset: 0,
+            duration: 1.6,
+            ease: "power2.inOut",
+            scrollTrigger: { trigger: wrap, start: "top 70%" },
+          }
+        );
+      }
+
+      const loop = group.querySelector<SVGPathElement>("[data-loop]");
+      if (loop) {
+        const len = loop.getTotalLength();
+        gsap.fromTo(
+          loop,
+          { strokeDasharray: len, strokeDashoffset: len },
+          {
+            strokeDashoffset: 0,
+            duration: 1,
+            ease: "power2.out",
+            scrollTrigger: { trigger: wrap, start: "top 40%" },
+          }
+        );
+      }
     }, wrap);
 
     if (prefersReduced) return () => ctx.revert();
@@ -65,10 +134,9 @@ export function Flow3D() {
       const rect = wrap.getBoundingClientRect();
       const px = (e.clientX - rect.left) / rect.width - 0.5;
       const py = (e.clientY - rect.top) / rect.height - 0.5;
-      tilt.current = { x: py * 10, y: px * 14 };
       gsap.to(group, {
-        rotateX: 8 - tilt.current.x,
-        rotateY: -18 + tilt.current.y,
+        rotateX: 8 - py * 10,
+        rotateY: -18 + px * 14,
         duration: 0.6,
         ease: "power2.out",
       });
@@ -90,47 +158,78 @@ export function Flow3D() {
   return (
     <div
       ref={wrapRef}
-      className="relative mx-auto max-w-4xl py-10"
+      className="relative mx-auto max-w-4xl overflow-x-auto py-10"
       style={{ perspective: "1600px" }}
     >
       <div
         ref={groupRef}
         className="relative mx-auto"
-        style={{
-          transformStyle: "preserve-3d",
-          width: "min(100%, 620px)",
-          height: `${NODES.length * 96 + 80}px`,
-        }}
+        style={{ transformStyle: "preserve-3d", width: `${WIDTH}px`, height: `${height}px` }}
       >
-        {/* connecting spine */}
         <svg
-          className="absolute left-1/2 top-0 h-full w-2 -translate-x-1/2"
+          className="absolute inset-0 h-full w-full overflow-visible"
           style={{ transform: "translateZ(-10px)" }}
-          viewBox={`0 0 8 ${NODES.length * 96 + 80}`}
-          preserveAspectRatio="none"
+          viewBox={`0 0 ${WIDTH} ${height}`}
         >
-          <line
-            x1="4"
-            y1="20"
-            x2="4"
-            y2={NODES.length * 96 + 40}
-            stroke="var(--line)"
-            strokeWidth="2"
-            strokeDasharray="4 6"
+          <defs>
+            <linearGradient id="spineGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--teal)" />
+              <stop offset="50%" stopColor="var(--amber)" />
+              <stop offset="100%" stopColor="var(--orange)" />
+            </linearGradient>
+            <marker id="loopArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="var(--orange)" />
+            </marker>
+          </defs>
+
+          <path d={spineD} data-spine fill="none" stroke="url(#spineGradient)" strokeWidth="2.5" strokeLinecap="round" />
+
+          <path
+            d={loopD}
+            data-loop
+            fill="none"
+            stroke="var(--orange)"
+            strokeWidth="1.75"
+            strokeDasharray="1 6"
+            strokeLinecap="round"
+            opacity={0.85}
+            markerEnd="url(#loopArrow)"
           />
+          <text
+            x={CENTER - AMP - 90}
+            y={(nodePoint(NODES.length - 1).y + nodePoint(1).y) / 2}
+            textAnchor="middle"
+            className="fill-[var(--orange)]"
+            fontFamily="var(--font-plex-mono)"
+            fontSize="10"
+            letterSpacing="0.05em"
+          >
+            feeds back in
+          </text>
         </svg>
 
+        {/* traveling signal pulse along the spine */}
+        <div
+          className="pointer-events-none absolute h-2.5 w-2.5 rounded-full bg-[var(--teal)] shadow-[0_0_14px_3px_var(--teal)]"
+          style={{
+            offsetPath: `path("${spineD}")`,
+            offsetRotate: "0deg",
+            animation: "flow-pulse 5s linear infinite",
+          }}
+        />
+
         {NODES.map((node, i) => {
+          const p = nodePoint(i);
           const depth = i * 26;
-          const xOffset = i % 2 === 0 ? -120 : 120;
           return (
             <div
               key={node.n}
               data-node
-              className="absolute left-1/2 flex w-[280px] -translate-x-1/2 items-center gap-4 rounded-2xl border border-[var(--line)] bg-[var(--void-2)]/90 p-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)] backdrop-blur"
+              className="absolute flex w-[260px] -translate-x-1/2 -translate-y-1/2 items-center gap-4 rounded-2xl border border-[var(--line)] bg-[var(--void-2)]/90 p-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)] backdrop-blur"
               style={{
-                top: `${i * 96}px`,
-                transform: `translateX(${xOffset}px) translateZ(${depth}px)`,
+                left: `${p.x}px`,
+                top: `${p.y}px`,
+                transform: `translate(-50%, -50%) translateZ(${depth}px)`,
               }}
             >
               <span
@@ -147,6 +246,15 @@ export function Flow3D() {
           );
         })}
       </div>
+
+      <style>{`
+        @keyframes flow-pulse {
+          0% { offset-distance: 0%; opacity: 0; }
+          8% { opacity: 1; }
+          92% { opacity: 1; }
+          100% { offset-distance: 100%; opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
