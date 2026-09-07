@@ -128,3 +128,26 @@
     @apply font-sans;
   }
 }
+
+/* Marketing homepage: a distinct dark "command center" visual system,
+   deliberately scoped to .marketing-dark only — the authenticated app
+   (login/terms/pending/admin/dashboard) keeps the light theme above.
+   Colors carry real meaning, not just variety: teal = normal/calm,
+   amber = monitor, orange = escalate — the same severity language as the
+   decision catalog, not decoration. */
+.marketing-dark {
+  --font-mono: var(--font-plex-mono);
+  --void: #0a0f14;
+  --void-2: #10171d;
+  --bone: #eef3f2;
+  --bone-dim: #9fb0ac;
+  --line: rgba(238, 243, 242, 0.1);
+  --teal: #5ed8c4;
+  --teal-dim: rgba(94, 216, 196, 0.35);
+  --teal-wash: rgba(94, 216, 196, 0.08);
+  --amber: #f4b942;
+  --orange: #f2793c;
+
+  background: var(--void);
+  color: var(--bone);
+}

@@ -28,8 +28,8 @@ export function CtaButton({
         "group/cta inline-flex items-center gap-3 rounded-full font-medium",
         "transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97]",
         variant === "primary"
-          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-          : "border border-black/10 bg-white text-foreground hover:bg-black/[0.03]",
+          ? "bg-[var(--teal)] text-[var(--void)] shadow-[0_0_40px_-10px_var(--teal-dim)] hover:shadow-[0_0_50px_-8px_var(--teal-dim)] hover:brightness-110"
+          : "border border-[var(--line)] bg-[var(--bone)]/[0.03] text-[var(--bone)] hover:bg-[var(--bone)]/[0.06]",
         sizes[size],
         className
       )}
@@ -39,7 +39,7 @@ export function CtaButton({
         className={cn(
           "flex items-center justify-center rounded-full transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
           "group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5 group-hover/cta:scale-105",
-          variant === "primary" ? "bg-white/15" : "bg-black/5",
+          variant === "primary" ? "bg-[var(--void)]/15" : "bg-[var(--bone)]/10",
           iconSizes[size]
         )}
       >

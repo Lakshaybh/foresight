@@ -17,18 +17,18 @@ export function SiteNav() {
   return (
     <>
       <nav className="fixed inset-x-0 top-6 z-50 flex justify-center px-4">
-        <div className="flex w-full max-w-2xl items-center justify-between gap-4 rounded-full border border-black/5 bg-white/70 px-4 py-2.5 shadow-[0_1px_2px_rgba(18,26,41,0.04),0_12px_32px_-16px_rgba(18,26,41,0.18)] backdrop-blur-xl">
-          <Link href="/" className="flex items-center gap-2 pl-1 text-sm font-semibold tracking-tight">
-            <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+        <div className="flex w-full max-w-2xl items-center justify-between gap-4 rounded-full border border-[var(--line)] bg-[var(--void-2)]/70 px-4 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.2),0_20px_50px_-24px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+          <Link href="/" className="flex items-center gap-2 pl-1 font-mono text-sm font-medium tracking-tight text-[var(--bone)]">
+            <span className="inline-block h-2 w-2 rounded-full bg-[var(--teal)] shadow-[0_0_8px_var(--teal)]" />
             Foresight
           </Link>
 
-          <div className="hidden items-center gap-6 text-sm text-foreground/70 sm:flex">
+          <div className="hidden items-center gap-6 text-sm text-[var(--bone-dim)] sm:flex">
             {LINKS.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="transition-colors duration-300 hover:text-foreground"
+                className="transition-colors duration-300 hover:text-[var(--bone)]"
               >
                 {link.label}
               </a>
@@ -38,7 +38,7 @@ export function SiteNav() {
           <div className="hidden items-center gap-2 sm:flex">
             <Link
               href="/login"
-              className="rounded-full px-3 py-1.5 text-sm text-foreground/70 transition-colors duration-300 hover:text-foreground"
+              className="rounded-full px-3 py-1.5 text-sm text-[var(--bone-dim)] transition-colors duration-300 hover:text-[var(--bone)]"
             >
               Sign in
             </Link>
@@ -54,13 +54,13 @@ export function SiteNav() {
           >
             <span
               className={cn(
-                "absolute h-[1.5px] w-4 bg-foreground transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                "absolute h-[1.5px] w-4 bg-[var(--bone)] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
                 open ? "rotate-45" : "-translate-y-1.5"
               )}
             />
             <span
               className={cn(
-                "absolute h-[1.5px] w-4 bg-foreground transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                "absolute h-[1.5px] w-4 bg-[var(--bone)] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
                 open ? "-rotate-45" : "translate-y-1.5"
               )}
             />
@@ -70,7 +70,7 @@ export function SiteNav() {
 
       <div
         className={cn(
-          "fixed inset-0 z-40 flex flex-col items-center justify-center gap-8 bg-white/90 backdrop-blur-2xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] sm:hidden",
+          "fixed inset-0 z-40 flex flex-col items-center justify-center gap-8 bg-[var(--void)]/95 backdrop-blur-2xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] sm:hidden",
           open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         )}
       >
@@ -81,7 +81,7 @@ export function SiteNav() {
             onClick={() => setOpen(false)}
             style={{ transitionDelay: open ? `${100 + i * 80}ms` : "0ms" }}
             className={cn(
-              "text-2xl font-medium tracking-tight transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+              "text-2xl font-medium tracking-tight text-[var(--bone)] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
               open ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             )}
           >
