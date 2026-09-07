@@ -157,7 +157,7 @@ def run_load(df: pl.DataFrame) -> None:
     orders = build_orders(df)
     order_items = build_order_items(df)
 
-    with psycopg.connect(settings.database_url) as conn:
+    with psycopg.connect(settings.database_url, prepare_threshold=None) as conn:
         with conn.cursor() as cur:
             upsert(cur, "product_category", categories,
                    cols=["source_id", "category_name"])

@@ -71,7 +71,7 @@ def main() -> None:
 
     rng = random.Random(SEED)
 
-    with psycopg.connect(settings.database_url) as conn:
+    with psycopg.connect(settings.database_url, prepare_threshold=None) as conn:
         with conn.cursor() as cur:
             print("Resetting synthetic tables...")
             cur.execute(
@@ -144,21 +144,15 @@ def main() -> None:
 
             print(f"supplier: inserted {len(all_suppliers)} rows across {len(categories)} categories")
 
-            # --- pick and flag the engineered drift-demo suppliers ---
-            drift_supplier_ids = set(
-                s[0] for s in rng.sample(all_suppliers, min(DRIFT_SUPPLIER_COUNT, len(all_suppliers)))
-            )
-            if drift_supplier_ids:
-                cur.execute(
-                    "UPDATE supplier SET engineered_drift_demo = true WHERE supplier_id = ANY(%s)",
-                    (list(drift_supplier_ids),),
-                )
-            print(f"supplier: flagged {len(drift_supplier_ids)} as engineered_drift_demo")
-
             lead_time_by_supplier = {s[0]: s[2] for s in all_suppliers}
             drift_start_date = max_date - timedelta(weeks=DRIFT_WINDOW_WEEKS)
 
             # --- assign each product a primary supplier from its category ---
+            # Must happen BEFORE picking drift-demo suppliers below: with only
+            # 118 products spread across 131 suppliers, a purely random pick
+            # from *all* suppliers can select one that no product ever uses,
+            # leaving it with zero purchase orders — not a realistic "slipping
+            # supplier" if it never receives any orders in the first place.
             primary_supplier_by_product: dict[str, str] = {}
             for product_id, category_id in product_category.items():
                 bucket = suppliers_by_category.get(category_id)
@@ -166,6 +160,22 @@ def main() -> None:
                     continue
                 supplier_id, _ = rng.choice(bucket)
                 primary_supplier_by_product[product_id] = supplier_id
+
+            # --- pick and flag the engineered drift-demo suppliers ---
+            # Only from suppliers actually assigned to at least one product,
+            # so every flagged "slipping supplier" has real order history to
+            # slip in.
+            used_supplier_ids = list(set(primary_supplier_by_product.values()))
+            drift_supplier_ids = set(
+                rng.sample(used_supplier_ids, min(DRIFT_SUPPLIER_COUNT, len(used_supplier_ids)))
+            )
+            if drift_supplier_ids:
+                cur.execute(
+                    "UPDATE supplier SET engineered_drift_demo = true WHERE supplier_id = ANY(%s)",
+                    (list(drift_supplier_ids),),
+                )
+            print(f"supplier: flagged {len(drift_supplier_ids)} as engineered_drift_demo "
+                  f"(from {len(used_supplier_ids)} suppliers with an assigned product)")
 
             # --- avg daily demand per product, from real sales ---
             avg_daily_demand: dict[str, float] = {
