@@ -82,6 +82,41 @@ def detect_for_supplier(delay_days_by_order_date: list[tuple[date, float]]) -> L
     )
 
 
+METRIC_NAME = "lead_time_drift_days"
+
+
+def persist_signals(cur, signals: list[LeadTimeSignal]) -> tuple[int, int]:
+    """Idempotent insert: won't create a duplicate signal for the same
+    supplier + metric on the same calendar day. Returns (inserted, skipped)."""
+    inserted = 0
+    skipped = 0
+    for sig in signals:
+        cur.execute(
+            """
+            SELECT 1 FROM signal
+            WHERE entity_type = 'supplier' AND entity_id = %s AND metric = %s
+              AND detected_at::date = CURRENT_DATE
+            """,
+            (sig.supplier_id, METRIC_NAME),
+        )
+        if cur.fetchone():
+            skipped += 1
+            continue
+
+        cur.execute(
+            """
+            INSERT INTO signal
+                (entity_type, entity_id, metric, baseline_value, observed_value, deviation, detected_at)
+            VALUES ('supplier', %s, %s, %s, %s, %s, %s)
+            """,
+            (sig.supplier_id, METRIC_NAME, sig.baseline_value, sig.observed_value,
+             sig.deviation, sig.detected_at),
+        )
+        inserted += 1
+
+    return inserted, skipped
+
+
 def run_detection(cur) -> list[LeadTimeSignal]:
     """Runs detection for every supplier with enough delivery history, against
     the live database. Does not write anything — the caller decides how to

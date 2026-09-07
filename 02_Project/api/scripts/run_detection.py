@@ -16,9 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.config import settings  # noqa: E402
-from app.detection.supplier_lead_time import run_detection  # noqa: E402
-
-METRIC_NAME = "lead_time_drift_days"
+from app.detection.supplier_lead_time import persist_signals, run_detection  # noqa: E402
 
 
 def main() -> None:
@@ -32,31 +30,7 @@ def main() -> None:
             signals = run_detection(cur)
             print(f"Detected {len(signals)} supplier lead-time drift signal(s).")
 
-            inserted = 0
-            skipped = 0
-            for sig in signals:
-                cur.execute(
-                    """
-                    SELECT 1 FROM signal
-                    WHERE entity_type = 'supplier' AND entity_id = %s AND metric = %s
-                      AND detected_at::date = CURRENT_DATE
-                    """,
-                    (sig.supplier_id, METRIC_NAME),
-                )
-                if cur.fetchone():
-                    skipped += 1
-                    continue
-
-                cur.execute(
-                    """
-                    INSERT INTO signal
-                        (entity_type, entity_id, metric, baseline_value, observed_value, deviation, detected_at)
-                    VALUES ('supplier', %s, %s, %s, %s, %s, %s)
-                    """,
-                    (sig.supplier_id, METRIC_NAME, sig.baseline_value, sig.observed_value,
-                     sig.deviation, sig.detected_at),
-                )
-                inserted += 1
+            inserted, skipped = persist_signals(cur, signals)
 
         conn.commit()
 
