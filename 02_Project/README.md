@@ -86,6 +86,10 @@ python scripts/ingest_dataco.py             # actually load into Postgres
   decision catalog's own severity language (normal/monitor/escalate), not
   arbitrary color choice. Scoped to `.marketing-dark` in `globals.css` —
   the authenticated app keeps its light theme.
+- [x] Homepage v3 — copy rewritten as a direct, second-person pitch instead
+  of a feature description; added a real CSS 3D-transformed pipeline
+  flowchart (`Flow3D`) with mouse-parallax tilt, showing the actual 6-step
+  running pipeline rather than a flat marketing diagram.
 
 ## Remaining setup for onboarding to fully work
 
