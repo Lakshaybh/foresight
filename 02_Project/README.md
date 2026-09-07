@@ -55,7 +55,9 @@ python scripts/ingest_dataco.py             # actually load into Postgres
 - [x] Next.js app scaffolded, builds cleanly, Supabase client wired
 - [x] FastAPI backend scaffolded, health endpoint verified working
 - [x] Postgres schema (from `../01_Documents/Entities_KPIs_Decision_Catalog.md`)
-- [x] DataCo CSV ingestion script (dry-run verified against the real file)
+- [x] DataCo CSV ingestion script — loaded live into Postgres and verified: 51
+  categories, 11 departments, 20,652 customers, 118 products, 65,752 orders,
+  180,519 order items, zero orphaned foreign keys
 - [ ] Synthetic supplier/inventory/purchase-order layer
 - [ ] Detection, forecasting, decision engine
 - [ ] Gated onboarding (homepage, login, admin approval)
