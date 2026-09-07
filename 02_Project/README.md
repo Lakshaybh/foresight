@@ -64,13 +64,16 @@ python scripts/ingest_dataco.py             # actually load into Postgres
   ~7,000 purchase orders, 19,116 inventory snapshots (see
   `scripts/generate_synthetic.py`).
 - [x] Detection engine — supplier lead-time drift (modified z-score baseline).
-  Live at `GET /signals` and `POST /signals/detect/supplier-lead-time`.
+  **6/6 engineered drift suppliers detected, zero false positives** (exact
+  set match, verified). Live at `GET /signals` and
+  `POST /signals/detect/supplier-lead-time`.
 - [x] Forecast engine — stockout risk, using each product's supplier's
   detected drift as a direct input. Live at `GET /forecast/stockout-risk` and
   `POST /forecast/detect`.
 - [x] Decision engine — maps every signal to one of the 5 catalog actions with
-  evidence and confidence. Verified live end-to-end: 13 signals -> 13
-  decisions (2 escalate_supplier, 11 reorder_now), idempotent re-run created
-  0 duplicates. Live at `GET /decisions` and `POST /decisions/run`.
+  evidence and confidence. Verified live end-to-end: 17 signals -> 17
+  decisions (6 escalate_supplier at confidence 0.49-1.0, 11 reorder_now),
+  idempotent re-run created 0 duplicates. Live at `GET /decisions` and
+  `POST /decisions/run`.
 - [ ] Gated onboarding (homepage, login, admin approval)
 - [ ] Human review UI (approve/reject/snooze a decision) and outcome tracking
