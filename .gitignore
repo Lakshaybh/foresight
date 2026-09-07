@@ -33,3 +33,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Raw datasets — large, third-party-licensed, not ours to redistribute via git.
+# Re-downloadable via 02_Project/api/scripts/ingest_dataco.py's source URL.
+/02_Project/data/
