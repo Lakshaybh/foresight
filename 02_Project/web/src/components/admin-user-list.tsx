@@ -162,6 +162,7 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
   const [accounts, setAccounts] = useState(initialAccounts);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("pending");
+  const [query, setQuery] = useState("");
   const [openPanel, setOpenPanel] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const supabase = createClient();
@@ -172,7 +173,7 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
 
   async function setStatus(userId: string, status: "approved" | "rejected") {
     setBusyId(userId);
-    const { error } = await supabase.from("user_account").update({ status }).eq("user_id", userId);
+    const { error } = await supabase.rpc("admin_set_status", { p_user_id: userId, p_status: status });
     setBusyId(null);
     if (!error) patchAccount(userId, { status });
   }
@@ -202,10 +203,24 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
     [accounts]
   );
 
-  const filtered = tab === "all" ? accounts : accounts.filter((a) => a.status === tab);
+  const byTab = tab === "all" ? accounts : accounts.filter((a) => a.status === tab);
+  const q = query.trim().toLowerCase();
+  const filtered = !q
+    ? byTab
+    : byTab.filter((a) =>
+        [a.email, a.profile?.business_name, a.profile?.business_type && BUSINESS_TYPE_LABELS[a.profile.business_type]]
+          .filter(Boolean)
+          .some((v) => v!.toLowerCase().includes(q))
+      );
 
   return (
     <div>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search by email, business name, or type..."
+        className="mb-4 w-full rounded-lg border border-[var(--line)] bg-[var(--bone)]/[0.03] px-3.5 py-2.5 text-sm text-[var(--bone)] outline-none placeholder:text-[var(--bone-dim)] focus:border-[var(--accent)]/50 focus:ring-2 focus:ring-[var(--accent)]/20"
+      />
       <div className="flex gap-1.5 rounded-full border border-[var(--line)] bg-[var(--bone)]/[0.02] p-1">
         {TABS.map((t) => (
           <button
