@@ -7,7 +7,6 @@ const LINKS = [
   { href: "/admin", label: "Accounts" },
   { href: "/admin/payments", label: "Payments" },
   { href: "/admin/audit", label: "Audit log" },
-  { href: "/admin/decisions", label: "Decisions" },
 ];
 
 export function AdminNav() {
