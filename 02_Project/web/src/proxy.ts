@@ -4,6 +4,24 @@ import { NextResponse, type NextRequest } from "next/server";
 // Public: no session required at all.
 const PUBLIC_PATHS = new Set(["/", "/login", "/login/admin", "/auth/callback"]);
 
+// Supabase stamps every access token with an `amr` (authentication methods
+// reference) claim recording how the session was actually established —
+// "password", "oauth", "otp", etc. This is the real signal for "did this
+// person come through the dedicated Admin Login form," independent of
+// whatever role their row happens to carry — a Google-authenticated session
+// can never satisfy this, even for an account with role = 'admin'.
+function wasPasswordAuthenticated(accessToken: string | undefined): boolean {
+  if (!accessToken) return false;
+  try {
+    const payload = accessToken.split(".")[1];
+    const decoded = JSON.parse(Buffer.from(payload, "base64").toString("utf-8"));
+    const amr = decoded.amr as { method: string }[] | undefined;
+    return amr?.some((entry) => entry.method === "password") ?? false;
+  } catch {
+    return false;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -30,7 +48,19 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   const path = request.nextUrl.pathname;
+
+  // Setting a new password is orthogonal to onboarding status — a recovery
+  // link creates a session before terms/approval have anything to say about
+  // it, so this path is exempt from every gate below. No session at all
+  // means the link was invalid/expired; send them to log in normally.
+  if (path === "/auth/reset-password") {
+    return user ? response : NextResponse.redirect(new URL("/login", request.url));
+  }
 
   if (!user) {
     if (!PUBLIC_PATHS.has(path)) {
@@ -91,8 +121,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (path.startsWith("/admin") && role !== "admin") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  if (path.startsWith("/admin")) {
+    // Command-center access requires BOTH the admin role AND a session that
+    // was actually established through the dedicated Admin Login form —
+    // an admin who signs in via Google/LinkedIn/email still only reaches
+    // the normal dashboard, never /admin.
+    if (role !== "admin" || !wasPasswordAuthenticated(session?.access_token)) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
   }
 
   return response;

@@ -69,6 +69,7 @@ export default function LoginPage() {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [mode, setMode] = useState<"signin" | "new">("signin");
 
   const supabase = createClient();
 
@@ -159,8 +160,35 @@ export default function LoginPage() {
         >
           <div className="mx-auto mb-6 h-1 w-10 rounded-full bg-[var(--bone)]/15" />
           <div className="mx-auto max-w-md">
-            <p className="text-center text-sm text-[var(--bone-dim)]">
-              New accounts are reviewed before access is granted.
+            <div className="mx-auto flex w-full max-w-[280px] rounded-full border border-[var(--line)] bg-[var(--bone)]/[0.03] p-1">
+              <button
+                type="button"
+                onClick={() => setMode("signin")}
+                className={`flex-1 rounded-full py-1.5 text-xs font-medium transition-all duration-300 ${
+                  mode === "signin"
+                    ? "bg-[var(--accent)] text-[var(--void)]"
+                    : "text-[var(--bone-dim)] hover:text-[var(--bone)]"
+                }`}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("new")}
+                className={`flex-1 rounded-full py-1.5 text-xs font-medium transition-all duration-300 ${
+                  mode === "new"
+                    ? "bg-[var(--accent)] text-[var(--void)]"
+                    : "text-[var(--bone-dim)] hover:text-[var(--bone)]"
+                }`}
+              >
+                Continue as new user
+              </button>
+            </div>
+
+            <p className="mt-4 text-center text-sm text-[var(--bone-dim)]">
+              {mode === "signin"
+                ? "Already have access? Sign in below."
+                : "New accounts are reviewed before access is granted."}
             </p>
 
             <div className="mt-5 space-y-2.5 sm:flex sm:gap-2.5 sm:space-y-0">
