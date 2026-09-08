@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-16">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Command Center</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <SignOutButton />
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
