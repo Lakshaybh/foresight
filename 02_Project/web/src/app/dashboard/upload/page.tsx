@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { DashboardNav } from "@/components/dashboard-nav";
 import { apiFetch, apiUpload } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect } from "react";
@@ -156,9 +157,10 @@ export default function UploadPage() {
 
   return (
     <AppShell title="Connect your data" email={email}>
+      <DashboardNav />
       <p className="-mt-6 mb-8 text-sm text-[var(--bone-dim)]">
-        Upload your suppliers/orders first, then your inventory — inventory rows reference
-        products that need to already exist from the suppliers file.
+        Upload your suppliers/orders first — sales and inventory rows both
+        reference products that need to already exist from that file.
       </p>
 
       <div className="space-y-5">
@@ -170,7 +172,14 @@ export default function UploadPage() {
           endpoint="/ingest/suppliers"
         />
         <UploadCard
-          title="2. Inventory"
+          title="2. Sales"
+          description="What you've sold — used to calculate revenue and best sellers."
+          columns={["product_name", "quantity", "unit_price", "order_date"]}
+          example="USB Cable, 5, 6.00, 2026-08-20"
+          endpoint="/ingest/sales"
+        />
+        <UploadCard
+          title="3. Inventory"
           description="Current stock levels for each product — used to calculate how many days until you run out."
           columns={["product_name", "warehouse_name", "snapshot_date", "stock_on_hand", "safety_stock_level", "avg_daily_demand"]}
           example="USB Cable, Main Warehouse, 2026-09-01, 120, 20, 8.5"

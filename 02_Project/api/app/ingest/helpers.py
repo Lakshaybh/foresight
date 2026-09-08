@@ -57,6 +57,21 @@ def get_or_create_supplier(cur, tenant_id: str, name: str) -> str:
     return cur.fetchone()[0]
 
 
+def get_or_create_default_customer(cur, tenant_id: str) -> str:
+    """The customer table has no name field at all (by design — no
+    individual identities are tracked, see 0001's schema comment). A
+    small-business sales upload has no per-customer breakdown to give
+    either, so every sale for a tenant is attributed to one shared
+    placeholder customer row, just to satisfy sales_order's real
+    customer_id foreign key."""
+    cur.execute("SELECT customer_id FROM customer WHERE tenant_id = %s LIMIT 1", (tenant_id,))
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    cur.execute("INSERT INTO customer (tenant_id) VALUES (%s) RETURNING customer_id", (tenant_id,))
+    return cur.fetchone()[0]
+
+
 def get_or_create_warehouse(cur, tenant_id: str, name: str) -> str:
     cur.execute(
         "SELECT warehouse_id FROM warehouse WHERE tenant_id = %s AND name = %s",
