@@ -41,17 +41,31 @@ function ComparisonBars({
   );
 }
 
-export function DecisionEvidence({ evidence }: { evidence: Record<string, unknown> }) {
+function projectedRunOutDate(daysRemaining: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + Math.floor(daysRemaining));
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+export function DecisionEvidence({
+  evidence,
+  entityName,
+}: {
+  evidence: Record<string, unknown>;
+  entityName?: string | null;
+}) {
   const metric = evidence.metric as string;
 
   if (metric === "lead_time_drift_days") {
     const baseline = Number(evidence.baseline_value);
     const observed = Number(evidence.observed_value);
+    const name = entityName ?? "This supplier";
     return (
       <div className="space-y-3">
         <p className="text-sm text-[var(--bone)]/90">
-          This supplier usually delivers in <strong>{baseline} days</strong>, but the last delivery took{" "}
-          <strong className="text-[var(--orange)]">{observed} days</strong> — a real slowdown, not normal variation.
+          <strong className="text-[var(--bone)]">{name}</strong> usually delivers in <strong>{baseline} days</strong>,
+          but the last delivery took <strong className="text-[var(--orange)]">{observed} days</strong> — a real
+          slowdown, not normal variation. Based on this trend, expect similar delays until you follow up with them.
         </p>
         <ComparisonBars
           leftLabel="Usual lead time"
@@ -68,11 +82,15 @@ export function DecisionEvidence({ evidence }: { evidence: Record<string, unknow
   if (metric === "stockout_risk") {
     const remaining = Number(evidence.days_of_stock_remaining);
     const required = Number(evidence.required_days);
+    const name = entityName ?? "This product";
     return (
       <div className="space-y-3">
         <p className="text-sm text-[var(--bone)]/90">
-          This product has <strong className="text-[var(--orange)]">{remaining} days</strong> of stock left, but
-          restocking takes <strong>{required} days</strong> — you&apos;ll run out before the next delivery arrives.
+          <strong className="text-[var(--bone)]">{name}</strong> has{" "}
+          <strong className="text-[var(--orange)]">{remaining} days</strong> of stock left, but restocking normally
+          takes <strong>{required} days</strong> — at this rate, you&apos;ll run out around{" "}
+          <strong className="text-[var(--orange)]">{projectedRunOutDate(remaining)}</strong>, before the next
+          delivery could arrive.
         </p>
         <ComparisonBars
           leftLabel="Days needed to restock"

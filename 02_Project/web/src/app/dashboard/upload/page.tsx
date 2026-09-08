@@ -90,9 +90,43 @@ function UploadCard({
   );
 }
 
+const STAGES = ["Analyzing suppliers", "Checking inventory levels", "Generating recommendations"];
+
+function AnalysisLoader({ stage }: { stage: number }) {
+  return (
+    <div className="mt-4">
+      <div className="mx-auto flex h-10 w-10 items-center justify-center">
+        <span
+          className="h-8 w-8 rounded-full border-2 border-[var(--accent)]/20 border-t-[var(--accent)]"
+          style={{ animation: "spin 0.9s linear infinite" }}
+        />
+      </div>
+      <div className="mt-3 flex justify-center gap-2">
+        {STAGES.map((label, i) => (
+          <span
+            key={label}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-300 ${
+              i === stage
+                ? "bg-[var(--accent)] text-[var(--void)]"
+                : i < stage
+                  ? "bg-[var(--teal)]/15 text-[var(--teal)]"
+                  : "bg-[var(--bone)]/5 text-[var(--bone-dim)]"
+            }`}
+          >
+            {i < stage ? "✓ " : ""}
+            {label}
+          </span>
+        ))}
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 export default function UploadPage() {
   const [email, setEmail] = useState<string | undefined>();
   const [running, setRunning] = useState(false);
+  const [stage, setStage] = useState(0);
   const [runMessage, setRunMessage] = useState<string | null>(null);
   const router = useRouter();
 
@@ -105,16 +139,19 @@ export default function UploadPage() {
   async function runAnalysis() {
     setRunning(true);
     setRunMessage(null);
+    setStage(0);
     try {
       await apiFetch("/signals/detect/supplier-lead-time", { method: "POST" });
+      setStage(1);
       await apiFetch("/forecast/detect", { method: "POST" });
+      setStage(2);
       const result = await apiFetch<{ created: number }>("/decisions/run", { method: "POST" });
       setRunMessage(`Analysis complete — ${result.created} new recommendation(s). Redirecting to your dashboard…`);
       setTimeout(() => router.push("/dashboard"), 1500);
     } catch (e) {
       setRunMessage(`Something went wrong: ${(e as Error).message}`);
+      setRunning(false);
     }
-    setRunning(false);
   }
 
   return (
@@ -146,13 +183,15 @@ export default function UploadPage() {
         <p className="mt-1 text-sm text-[var(--bone-dim)]">
           Once your files are uploaded, run the analysis to generate your first recommendations.
         </p>
-        <button
-          onClick={runAnalysis}
-          disabled={running}
-          className="mt-4 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {running ? "Running…" : "Run analysis"}
-        </button>
+        {!running && (
+          <button
+            onClick={runAnalysis}
+            className="mt-4 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all hover:brightness-110"
+          >
+            Run analysis
+          </button>
+        )}
+        {running && <AnalysisLoader stage={stage} />}
         {runMessage && <p className="mt-3 text-sm text-[var(--bone)]">{runMessage}</p>}
       </div>
     </AppShell>

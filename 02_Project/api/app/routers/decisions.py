@@ -17,6 +17,7 @@ class Decision(BaseModel):
     signal_id: str
     action_type: str
     evidence: dict
+    entity_name: str | None
     confidence: float
     status: str
     owner_role: str
@@ -40,9 +41,36 @@ class OutcomeRequest(BaseModel):
     outcome: str
 
 
-def _row_to_decision(r: tuple) -> Decision:
+def _resolve_entity_name(cur, evidence: dict, cache: dict[tuple[str, str], str | None]) -> str | None:
+    """A decision's evidence carries an internal entity_id (a UUID) — not
+    something a shop owner can read. This resolves it to the actual
+    supplier or product name, so "this supplier is late" can say which
+    one. Cached per request since the same supplier/product recurs across
+    several decisions."""
+    entity_type = evidence.get("entity_type")
+    entity_id = evidence.get("entity_id")
+    if not entity_type or not entity_id:
+        return None
+
+    key = (entity_type, entity_id)
+    if key in cache:
+        return cache[key]
+
+    table = {"supplier": "supplier", "product": "product"}.get(entity_type)
+    if table is None:
+        cache[key] = None
+        return None
+
+    cur.execute(f"SELECT name FROM {table} WHERE {table}_id = %s", (entity_id,))  # noqa: S608 — table is from a fixed allowlist above, not user input
+    row = cur.fetchone()
+    name = row[0] if row else None
+    cache[key] = name
+    return name
+
+
+def _row_to_decision(r: tuple, entity_name: str | None) -> Decision:
     return Decision(
-        decision_id=str(r[0]), signal_id=str(r[1]), action_type=r[2], evidence=r[3],
+        decision_id=str(r[0]), signal_id=str(r[1]), action_type=r[2], evidence=r[3], entity_name=entity_name,
         confidence=float(r[4]), status=r[5], owner_role=r[6], created_at=r[7],
         resolved_at=r[8], outcome=r[9],
     )
@@ -66,7 +94,8 @@ def list_decisions(
         )
         rows = cur.fetchall()
 
-    return [_row_to_decision(r) for r in rows]
+        name_cache: dict[tuple[str, str], str | None] = {}
+        return [_row_to_decision(r, _resolve_entity_name(cur, r[3], name_cache)) for r in rows]
 
 
 @router.post("/run", response_model=RunResult)
@@ -121,9 +150,10 @@ def review_decision(
             (body.status, user_id, decision_id),
         )
         updated = cur.fetchone()
+        entity_name = _resolve_entity_name(cur, updated[3], {})
         conn.commit()
 
-    return _row_to_decision(updated)
+    return _row_to_decision(updated, entity_name)
 
 
 @router.patch("/{decision_id}/outcome", response_model=Decision)
@@ -153,6 +183,7 @@ def record_outcome(
             (body.outcome, decision_id),
         )
         updated = cur.fetchone()
+        entity_name = _resolve_entity_name(cur, updated[3], {})
         conn.commit()
 
-    return _row_to_decision(updated)
+    return _row_to_decision(updated, entity_name)

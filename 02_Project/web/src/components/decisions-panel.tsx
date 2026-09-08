@@ -10,6 +10,7 @@ type Decision = {
   signal_id: string;
   action_type: string;
   evidence: Record<string, unknown>;
+  entity_name: string | null;
   confidence: number;
   status: string;
   owner_role: string;
@@ -17,6 +18,15 @@ type Decision = {
   resolved_at: string | null;
   outcome: string | null;
 };
+
+// Urgency reuses the same severity language as the rest of the product
+// (teal/amber/orange), driven by the model's own confidence rather than a
+// separate hand-picked "urgent" flag — the number that's already there.
+function urgency(confidence: number): { label: string; color: string; bg: string } {
+  if (confidence >= 0.8) return { label: "Urgent", color: "var(--orange)", bg: "var(--orange)" };
+  if (confidence >= 0.5) return { label: "Normal", color: "var(--amber)", bg: "var(--amber)" };
+  return { label: "Low", color: "var(--teal)", bg: "var(--teal)" };
+}
 
 const ACTION_LABELS: Record<string, string> = {
   reorder_now: "Reorder now",
@@ -147,17 +157,28 @@ export function DecisionsPanel() {
 
   return (
     <div className="space-y-3">
-      {decisions.map((d) => (
+      {decisions.map((d) => {
+        const u = urgency(d.confidence);
+        return (
         <div key={d.decision_id} className="rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]/10 text-[var(--accent)]">
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: `color-mix(in srgb, ${u.bg} 15%, transparent)`, color: u.color }}
+              >
                 {ACTION_ICONS[d.action_type]}
               </span>
               <div>
                 <p className="text-sm font-medium text-[var(--bone)]">{ACTION_LABELS[d.action_type] ?? d.action_type}</p>
                 <div className="mt-0.5 flex items-center gap-2">
                   <StatusPill status={d.status} />
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
+                    style={{ backgroundColor: `color-mix(in srgb, ${u.bg} 15%, transparent)`, color: u.color }}
+                  >
+                    {u.label}
+                  </span>
                   <span className="text-xs text-[var(--bone-dim)]">confidence {(d.confidence * 100).toFixed(0)}%</span>
                 </div>
               </div>
@@ -190,7 +211,7 @@ export function DecisionsPanel() {
           </div>
 
           <div className="mt-4 border-t border-[var(--line)] pt-4">
-            <DecisionEvidence evidence={d.evidence} />
+            <DecisionEvidence evidence={d.evidence} entityName={d.entity_name} />
           </div>
 
           {d.status !== "open" && (
@@ -220,7 +241,8 @@ export function DecisionsPanel() {
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
