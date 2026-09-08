@@ -14,7 +14,7 @@ export default function TermsPage() {
   async function handleAccept() {
     setSubmitting(true);
     await supabase.rpc("accept_terms");
-    router.push("/pending");
+    router.push("/onboarding");
     router.refresh();
   }
 

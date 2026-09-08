@@ -132,22 +132,37 @@
 /* Marketing homepage: a distinct dark "command center" visual system,
    deliberately scoped to .marketing-dark only — the authenticated app
    (login/terms/pending/admin/dashboard) keeps the light theme above.
-   Colors carry real meaning, not just variety: teal = normal/calm,
-   amber = monitor, orange = escalate — the same severity language as the
-   decision catalog, not decoration. */
+
+   Two separate color roles, kept deliberately distinct:
+   --accent / --accent-2 (pink/purple) is the BRAND accent — nav, CTAs,
+   headline emphasis, background shapes, product-panel chrome.
+   --teal / --amber / --orange is the SEVERITY language used only where the
+   page is actually showing risk level (signal dots, mesh, dashboard output
+   colors) — tied to the decision catalog (normal/monitor/escalate), not
+   decoration, and left alone even as the brand color changes around it. */
 .marketing-dark {
   --font-mono: var(--font-plex-mono);
-  --void: #0a0f14;
-  --void-2: #10171d;
-  --bone: #eef3f2;
-  --bone-dim: #9fb0ac;
-  --line: rgba(238, 243, 242, 0.1);
+  --void: #0a0713;
+  --void-2: #140b22;
+  --bone: #f3eef8;
+  --bone-dim: #a89bb8;
+  --line: rgba(243, 238, 248, 0.1);
+
+  --accent: #e8479e;
+  --accent-2: #8b5cf6;
+  --accent-dim: rgba(232, 71, 158, 0.35);
+  --accent-wash: rgba(232, 71, 158, 0.08);
+
   --teal: #5ed8c4;
   --teal-dim: rgba(94, 216, 196, 0.35);
   --teal-wash: rgba(94, 216, 196, 0.08);
   --amber: #f4b942;
   --orange: #f2793c;
 
-  background: var(--void);
+  /* No background here on purpose: a plain in-flow box's own background
+     paints ABOVE a fixed, negative-z-index descendant in CSS stacking
+     order, regardless of DOM nesting — so this opaque color was silently
+     covering AbstractBackground the entire time. AbstractBackground paints
+     its own var(--void) base itself; this class only sets text color. */
   color: var(--bone);
 }

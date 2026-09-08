@@ -60,7 +60,7 @@ export function ProductPreview() {
               <p className="text-[11px] text-[var(--bone-dim)]">Owner: Ops manager</p>
             </div>
             <div className="flex gap-1.5">
-              <span className="rounded-md bg-[var(--teal)] px-2.5 py-1 text-[11px] font-medium text-[var(--void)]">
+              <span className="rounded-md bg-[var(--accent)] px-2.5 py-1 text-[11px] font-medium text-[var(--void)]">
                 Approve
               </span>
               <span className="rounded-md border border-[var(--line)] px-2.5 py-1 text-[11px] text-[var(--bone-dim)]">

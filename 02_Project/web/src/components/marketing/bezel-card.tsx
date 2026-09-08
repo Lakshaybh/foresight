@@ -15,7 +15,7 @@ export function BezelCard({
     <div
       className={cn(
         "rounded-[1.75rem] bg-[var(--bone)]/[0.04] p-1.5 ring-1 ring-[var(--line)]",
-        glow && "shadow-[0_0_60px_-15px_var(--teal-dim)]",
+        glow && "shadow-[0_0_60px_-15px_var(--accent-dim)]",
         className
       )}
     >

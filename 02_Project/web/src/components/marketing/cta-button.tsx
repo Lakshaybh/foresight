@@ -28,7 +28,7 @@ export function CtaButton({
         "group/cta inline-flex items-center gap-3 rounded-full font-medium",
         "transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97]",
         variant === "primary"
-          ? "bg-[var(--teal)] text-[var(--void)] shadow-[0_0_40px_-10px_var(--teal-dim)] hover:shadow-[0_0_50px_-8px_var(--teal-dim)] hover:brightness-110"
+          ? "bg-[var(--accent)] text-[var(--void)] shadow-[0_0_40px_-10px_var(--accent-dim)] hover:shadow-[0_0_50px_-8px_var(--accent-dim)] hover:brightness-110"
           : "border border-[var(--line)] bg-[var(--bone)]/[0.03] text-[var(--bone)] hover:bg-[var(--bone)]/[0.06]",
         sizes[size],
         className

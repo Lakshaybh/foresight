@@ -19,7 +19,7 @@ export function SiteNav() {
       <nav className="fixed inset-x-0 top-6 z-50 flex justify-center px-4">
         <div className="flex w-full max-w-2xl items-center justify-between gap-4 rounded-full border border-[var(--line)] bg-[var(--void-2)]/70 px-4 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.2),0_20px_50px_-24px_rgba(0,0,0,0.6)] backdrop-blur-xl">
           <Link href="/" className="flex items-center gap-2 pl-1 font-mono text-sm font-medium tracking-tight text-[var(--bone)]">
-            <span className="inline-block h-2 w-2 rounded-full bg-[var(--teal)] shadow-[0_0_8px_var(--teal)]" />
+            <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
             Foresight
           </Link>
 

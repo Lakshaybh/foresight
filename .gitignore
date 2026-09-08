@@ -37,3 +37,6 @@ Thumbs.db
 # Raw datasets — large, third-party-licensed, not ours to redistribute via git.
 # Re-downloadable via 02_Project/api/scripts/ingest_dataco.py's source URL.
 /02_Project/data/
+
+# Supabase CLI local cache (project ref, pooler URL) — machine-local, not code.
+/02_Project/supabase/.temp/

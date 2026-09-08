@@ -64,6 +64,22 @@ export async function proxy(request: NextRequest) {
   }
 
   if (status !== "approved") {
+    // The admin needs more than an email to judge a request — gate on the
+    // business-profile form before an account is allowed to sit in "pending."
+    const { data: profile } = await supabase
+      .from("business_profile")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const hasProfile = Boolean(profile);
+
+    if (!hasProfile) {
+      if (path !== "/onboarding") {
+        return NextResponse.redirect(new URL("/onboarding", request.url));
+      }
+      return response;
+    }
+
     if (path !== "/pending") {
       return NextResponse.redirect(new URL("/pending", request.url));
     }
@@ -71,7 +87,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Approved from here on.
-  if (path === "/terms" || path === "/pending") {
+  if (path === "/terms" || path === "/pending" || path === "/onboarding") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

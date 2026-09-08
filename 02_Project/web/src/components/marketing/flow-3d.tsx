@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -15,128 +15,149 @@ const NODES = [
   { n: "06", title: "Track outcome", body: "See whether the call actually paid off.", color: "var(--orange)" },
 ];
 
-const WIDTH = 760;
-const CENTER = 380;
-const AMP = 230;
-const ROW = 150;
-const TOP_PAD = 70;
+// Grid layout: cards sit in the odd columns/rows, arrows live only in the
+// gap tracks between them (even columns/rows) — arrows can never overlap a
+// card because they physically occupy a different grid track. Top row runs
+// left-to-right, then drops down the right edge and the bottom row runs
+// back right-to-left, so the path never has to cross itself.
+const GRID_COLS = "minmax(160px,1fr) 40px minmax(160px,1fr) 40px minmax(160px,1fr)";
 
-// A real 2x3 rectangle instead of a zigzag: top row runs left-to-right
-// (Connect, Detect, Forecast), then drops down and runs back right-to-left
-// on the bottom row (Decide, You approve, Track outcome) — a clean
-// boustrophedon traversal so the connecting line never has to cross itself.
-const COL_X = [CENTER - AMP, CENTER, CENTER + AMP];
-const ROW_Y = [TOP_PAD, TOP_PAD + ROW];
-const ROWS: number[][] = [[0, 1, 2], [3, 4, 5]];
-
-const NODE_POSITIONS: Record<number, { x: number; y: number }> = {
-  0: { x: COL_X[0], y: ROW_Y[0] },
-  1: { x: COL_X[1], y: ROW_Y[0] },
-  2: { x: COL_X[2], y: ROW_Y[0] },
-  3: { x: COL_X[2], y: ROW_Y[1] },
-  4: { x: COL_X[1], y: ROW_Y[1] },
-  5: { x: COL_X[0], y: ROW_Y[1] },
-};
-
-function nodePoint(i: number) {
-  return NODE_POSITIONS[i];
+function ArrowRight({ color }: { color: string }) {
+  return (
+    <div data-arrow className="flex items-center justify-center opacity-0">
+      <svg width="24" height="14" viewBox="0 0 24 14" fill="none">
+        <path d="M1 7H21M21 7L15 1M21 7L15 13" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+function ArrowLeft({ color }: { color: string }) {
+  return (
+    <div data-arrow className="flex items-center justify-center opacity-0">
+      <svg width="24" height="14" viewBox="0 0 24 14" fill="none">
+        <path d="M23 7H3M3 7L9 1M3 7L9 13" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+function ArrowDown({ color }: { color: string }) {
+  return (
+    <div data-arrow className="flex items-center justify-center opacity-0">
+      <svg width="14" height="28" viewBox="0 0 14 28" fill="none">
+        <path d="M7 1V25M7 25L1 19M7 25L13 19" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
 }
 
-function nodeDepth(i: number) {
-  const rowIndex = ROWS.findIndex((row) => row.includes(i));
-  return rowIndex * 60;
-}
-
-// Smooth S-curve through every node center — a curved snake, not a
-// straight dashed line, so the pipeline reads as one continuous motion
-// rather than a checklist.
-function buildSpinePath(): string {
-  const pts = NODES.map((_, i) => nodePoint(i));
-  let d = `M ${pts[0].x},${pts[0].y}`;
-  for (let i = 1; i < pts.length; i++) {
-    const prev = pts[i - 1];
-    const cur = pts[i];
-    const midY = (prev.y + cur.y) / 2;
-    d += ` C ${prev.x},${midY} ${cur.x},${midY} ${cur.x},${cur.y}`;
-  }
-  return d;
-}
-
-// The loop-back: outcome tracking (the last node, bottom-left) feeds back
-// into detection (node 2, top-center) — true to how the product actually
-// works. Routed up the LEFT side, since the main flow already uses the
-// right side to drop from the top row to the bottom row — keeps the two
-// paths from crossing.
-function buildLoopBackPath(): string {
-  const last = nodePoint(NODES.length - 1);
-  const detect = nodePoint(1);
-  const outX = COL_X[0] - 90;
-  const topY = TOP_PAD - 40;
-  return `M ${last.x - 15},${last.y - 15} C ${outX},${last.y} ${outX},${topY} ${outX},${topY} C ${outX},${topY} ${detect.x - 40},${topY} ${detect.x - 20},${detect.y - 30}`;
+function Card({
+  node,
+  cardRef,
+}: {
+  node: (typeof NODES)[number];
+  cardRef?: React.Ref<HTMLDivElement>;
+}) {
+  return (
+    <div
+      ref={cardRef}
+      data-node
+      className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--void-2)]/95 p-4 opacity-0 shadow-[0_16px_40px_-18px_rgba(0,0,0,0.7)]"
+    >
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-mono text-xs font-semibold text-[var(--void)]"
+        style={{ backgroundColor: node.color }}
+      >
+        {node.n}
+      </span>
+      <div>
+        <p className="text-sm font-medium text-[var(--bone)]">{node.title}</p>
+        <p className="text-xs text-[var(--bone-dim)]">{node.body}</p>
+      </div>
+    </div>
+  );
 }
 
 export function Flow3D() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const groupRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const trackCardRef = useRef<HTMLDivElement | null>(null);
+  const detectCardRef = useRef<HTMLDivElement | null>(null);
+  const [loopPath, setLoopPath] = useState<string | null>(null);
 
-  const spineD = useMemo(buildSpinePath, []);
-  const loopD = useMemo(buildLoopBackPath, []);
-  const height = TOP_PAD * 2 + (ROWS.length - 1) * ROW;
+  // Measure real, rendered card positions rather than guessing pixel
+  // coordinates — the loop-back path is only ever as correct as the
+  // layout actually is, on any screen size.
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const track = trackCardRef.current;
+    const detect = detectCardRef.current;
+    if (!container || !track || !detect) return;
+
+    const measure = () => {
+      const c = container.getBoundingClientRect();
+      const t = track.getBoundingClientRect();
+      const d = detect.getBoundingClientRect();
+
+      const startX = t.left - c.left + 14;
+      const startY = t.top - c.top + t.height / 2;
+      const endX = d.left - c.left + d.width / 2;
+      const endY = d.top - c.top;
+      const outX = 34;
+      const topY = Math.max(endY - 46, 10);
+
+      setLoopPath(
+        `M ${startX},${startY} C ${outX},${startY} ${outX},${topY} ${outX},${topY} C ${outX},${topY} ${endX - 26},${topY} ${endX},${endY - 6}`
+      );
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const wrap = wrapRef.current;
-    const group = groupRef.current;
-    if (!wrap || !group) return;
+    const container = containerRef.current;
+    if (!wrap || !container) return;
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const ctx = gsap.context(() => {
-      if (!prefersReduced) {
-        gsap.fromTo(
-          group,
-          { rotateY: -18, rotateX: 10, opacity: 0 },
-          {
-            rotateY: 0,
-            rotateX: 0,
-            opacity: 1,
-            duration: 1.4,
-            ease: "power3.out",
-            scrollTrigger: { trigger: wrap, start: "top 80%" },
-          }
-        );
-      } else {
-        gsap.set(group, { rotateY: 0, rotateX: 0, opacity: 1 });
+      const cards = container.querySelectorAll("[data-node]");
+      const arrows = container.querySelectorAll("[data-arrow]");
+
+      if (prefersReduced) {
+        gsap.set(cards, { opacity: 1, y: 0 });
+        gsap.set(arrows, { opacity: 1 });
+        return;
       }
 
-      const cards = group.querySelectorAll("[data-node]");
       gsap.fromTo(
         cards,
-        { opacity: 0, x: -40 },
+        { opacity: 0, y: 24 },
         {
           opacity: 1,
-          x: 0,
-          duration: 0.8,
-          stagger: 0.12,
+          y: 0,
+          duration: 0.7,
+          stagger: 0.1,
           ease: "power2.out",
-          scrollTrigger: { trigger: wrap, start: "top 70%" },
+          scrollTrigger: { trigger: wrap, start: "top 75%" },
+        }
+      );
+      gsap.fromTo(
+        arrows,
+        { opacity: 0 },
+        {
+          opacity: 1,
+          duration: 0.5,
+          stagger: 0.14,
+          delay: 0.3,
+          ease: "power1.out",
+          scrollTrigger: { trigger: wrap, start: "top 75%" },
         }
       );
 
-      const spine = group.querySelector<SVGPathElement>("[data-spine]");
-      if (spine) {
-        const len = spine.getTotalLength();
-        gsap.fromTo(
-          spine,
-          { strokeDasharray: len, strokeDashoffset: len },
-          {
-            strokeDashoffset: 0,
-            duration: 1.6,
-            ease: "power2.inOut",
-            scrollTrigger: { trigger: wrap, start: "top 70%" },
-          }
-        );
-      }
-
-      const loop = group.querySelector<SVGPathElement>("[data-loop]");
+      const loop = container.querySelector<SVGPathElement>("[data-loop]");
       if (loop) {
         const len = loop.getTotalLength();
         gsap.fromTo(
@@ -146,115 +167,82 @@ export function Flow3D() {
             strokeDashoffset: 0,
             duration: 1,
             ease: "power2.out",
-            scrollTrigger: { trigger: wrap, start: "top 40%" },
+            scrollTrigger: { trigger: wrap, start: "top 55%" },
           }
         );
       }
     }, wrap);
 
     return () => ctx.revert();
-  }, []);
+  }, [loopPath]);
 
   return (
-    <div
-      ref={wrapRef}
-      className="relative mx-auto flex max-w-4xl justify-center overflow-x-auto py-10"
-      style={{ perspective: "1600px" }}
-    >
-      <div
-        ref={groupRef}
-        className="relative shrink-0"
-        style={{ transformStyle: "preserve-3d", width: `${WIDTH}px`, height: `${height}px` }}
-      >
-        <svg
-          className="absolute inset-0 h-full w-full overflow-visible"
-          style={{ transform: "translateZ(150px)" }}
-          viewBox={`0 0 ${WIDTH} ${height}`}
-        >
-          <defs>
-            <linearGradient id="spineGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--teal)" />
-              <stop offset="50%" stopColor="var(--amber)" />
-              <stop offset="100%" stopColor="var(--orange)" />
-            </linearGradient>
-            <marker id="loopArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 Z" fill="var(--orange)" />
-            </marker>
-          </defs>
-
-          <path d={spineD} data-spine fill="none" stroke="url(#spineGradient)" strokeWidth="2.5" strokeLinecap="round" />
-
-          <path
-            d={loopD}
-            data-loop
-            fill="none"
-            stroke="url(#spineGradient)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity={0.9}
-            markerEnd="url(#loopArrow)"
-          />
-          <text
-            x={COL_X[0] - 90}
-            y={TOP_PAD - 40}
-            textAnchor="middle"
-            className="fill-[var(--bone-dim)]"
-            fontFamily="var(--font-plex-mono)"
-            fontSize="10"
-            letterSpacing="0.05em"
-          >
-            feeds back in
-          </text>
-        </svg>
-
-        {/* traveling signal pulse along the spine */}
+    <div ref={wrapRef} className="mx-auto max-w-4xl overflow-x-auto py-10">
+      <div ref={containerRef} className="relative mx-auto w-fit pl-14">
         <div
-          className="pointer-events-none absolute h-2.5 w-2.5 rounded-full bg-[var(--teal)] shadow-[0_0_14px_3px_var(--teal)]"
-          style={{
-            offsetPath: `path("${spineD}")`,
-            offsetRotate: "0deg",
-            transform: "translateZ(150px)",
-            animation: "flow-pulse 5s linear infinite",
-          }}
-        />
+          className="grid items-center gap-y-11"
+          style={{ gridTemplateColumns: GRID_COLS }}
+        >
+          {/* Row 1 */}
+          <Card node={NODES[0]} />
+          <ArrowRight color="var(--teal)" />
+          <Card node={NODES[1]} cardRef={detectCardRef} />
+          <ArrowRight color="var(--teal)" />
+          <Card node={NODES[2]} />
 
-        {NODES.map((node, i) => {
-          const p = nodePoint(i);
-          const depth = nodeDepth(i);
-          return (
-            <div
-              key={node.n}
-              data-node
-              className="absolute flex w-[200px] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-2xl border border-[var(--line)] bg-[var(--void-2)]/90 p-3 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)] backdrop-blur"
-              style={{
-                left: `${p.x}px`,
-                top: `${p.y}px`,
-                transform: `translate(-50%, -50%) translateZ(${depth}px)`,
-              }}
+          {/* connector row (down on the right edge) */}
+          <div />
+          <div />
+          <div />
+          <div />
+          <div className="flex justify-center">
+            <ArrowDown color="var(--amber)" />
+          </div>
+
+          {/* Row 2 (reversed reading order, right to left) */}
+          <Card node={NODES[5]} cardRef={trackCardRef} />
+          <ArrowLeft color="var(--orange)" />
+          <Card node={NODES[4]} />
+          <ArrowLeft color="var(--amber)" />
+          <Card node={NODES[3]} />
+        </div>
+
+        {loopPath && (
+          <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
+            <defs>
+              <marker id="loopArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 Z" fill="var(--teal)" />
+              </marker>
+              <linearGradient id="loopGradient" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stopColor="var(--orange)" />
+                <stop offset="60%" stopColor="var(--amber)" />
+                <stop offset="100%" stopColor="var(--teal)" />
+              </linearGradient>
+            </defs>
+            <path
+              d={loopPath}
+              data-loop
+              fill="none"
+              stroke="url(#loopGradient)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              markerEnd="url(#loopArrow)"
+            />
+            <text
+              x="14"
+              y={38}
+              textAnchor="middle"
+              transform="rotate(-90 14 38)"
+              className="fill-[var(--bone-dim)]"
+              fontFamily="var(--font-plex-mono)"
+              fontSize="9"
+              letterSpacing="0.05em"
             >
-              <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-mono text-xs font-semibold text-[var(--void)]"
-                style={{ backgroundColor: node.color }}
-              >
-                {node.n}
-              </span>
-              <div>
-                <p className="text-sm font-medium text-[var(--bone)]">{node.title}</p>
-                <p className="text-xs text-[var(--bone-dim)]">{node.body}</p>
-              </div>
-            </div>
-          );
-        })}
+              feeds back in
+            </text>
+          </svg>
+        )}
       </div>
-
-      <style>{`
-        @keyframes flow-pulse {
-          0% { offset-distance: 0%; opacity: 0; }
-          8% { opacity: 1; }
-          92% { opacity: 1; }
-          100% { offset-distance: 100%; opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }

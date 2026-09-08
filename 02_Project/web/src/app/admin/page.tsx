@@ -16,6 +16,18 @@ export default async function AdminPage() {
     .select("user_id, email, role, status, created_at, terms_accepted_at")
     .order("created_at", { ascending: false });
 
+  const { data: profiles } = await supabase
+    .from("business_profile")
+    .select(
+      "user_id, business_name, business_type, what_you_do, team_size, primary_challenge, country, website"
+    );
+
+  const profileByUserId = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+  const accountsWithProfile = (accounts ?? []).map((a) => ({
+    ...a,
+    profile: profileByUserId.get(a.user_id) ?? null,
+  }));
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-16">
       <div className="flex items-center justify-between">
@@ -26,7 +38,7 @@ export default async function AdminPage() {
         Approve or reject accounts waiting for access.
       </p>
 
-      <AdminUserList initialAccounts={accounts ?? []} />
+      <AdminUserList initialAccounts={accountsWithProfile} />
     </main>
   );
 }

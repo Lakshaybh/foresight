@@ -1,6 +1,6 @@
 import { Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import { SmoothScrollProvider } from "@/lib/smooth-scroll";
-import { AtmosphereBackground } from "@/components/marketing/atmosphere-background";
+import { AbstractBackground } from "@/components/marketing/abstract-background";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { CtaButton } from "@/components/marketing/cta-button";
 import { BezelCard } from "@/components/marketing/bezel-card";
@@ -8,7 +8,7 @@ import { ProductPreview } from "@/components/marketing/product-preview";
 import { RevealSection } from "@/components/marketing/reveal-section";
 import { HeroHeadline } from "@/components/marketing/hero-headline";
 import { ScrambleLine } from "@/components/marketing/scramble-heading";
-import { Flow3D } from "@/components/marketing/flow-3d";
+import { DataConverge } from "@/components/marketing/data-converge";
 import { StatCounter } from "@/components/marketing/stat-counter";
 
 const spaceGrotesk = Space_Grotesk({
@@ -26,12 +26,32 @@ function Eyebrow({ n, children }: { n: string; children: React.ReactNode }) {
   return (
     <span
       data-reveal
-      className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--teal)]"
+      className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--accent)]"
     >
       <span className="text-[var(--bone-dim)]">SIGNAL {n} —</span> {children}
     </span>
   );
 }
+
+const MISSED = [
+  "A stockout you only hear about when a customer asks where their order is",
+  "A supplier's lead time quietly drifting for weeks before it becomes a crisis",
+  "Hours spent scanning spreadsheets, hoping to notice a problem before it lands",
+  "Reordering decisions made on gut feel, not on evidence you can point to",
+];
+
+const GAINED = [
+  "Weeks of advance notice before a supplier delay turns into a stockout",
+  "One ranked queue of what actually needs attention today — not everything",
+  "Time back — no more daily manual checks across suppliers and stock",
+  "A recommendation you can defend, with the evidence attached to it",
+];
+
+const ROADMAP = [
+  { status: "Live", title: "Supplier lead-time drift detection", body: "The core MVP wedge — catching a slowing supplier before it causes a stockout." },
+  { status: "Live", title: "Evidence-backed action queue", body: "Every recommendation ships with its inputs, confidence, and the baseline it beat." },
+  { status: "In progress", title: "Expanding the signal library", body: "More early-warning signals beyond lead-time drift, built on the same audited approach." },
+];
 
 const SEGMENTS = [
   { title: "Small e-commerce", body: "Keep bestsellers in stock without babysitting a spreadsheet daily." },
@@ -46,22 +66,23 @@ export default function HomePage() {
     <div className={`${spaceGrotesk.variable} ${plexMono.variable} marketing-dark font-[family-name:var(--font-display)]`}>
       <SmoothScrollProvider>
         <main className="relative overflow-x-clip">
-          <AtmosphereBackground />
+          <AbstractBackground />
           <SiteNav />
 
           {/* Hero */}
-          <section className="relative z-10 px-4 pt-40 pb-24 sm:pt-48 sm:pb-32">
-            <div className="mx-auto max-w-3xl text-center">
+          <section className="relative z-10 px-4 pt-44 pb-24 sm:pt-56 sm:pb-32">
+            <div className="mx-auto max-w-4xl text-center">
               <ScrambleLine
                 text="DETECT · EXPLAIN · RECOMMEND · TRACK"
-                className="text-[11px] tracking-[0.3em] text-[var(--teal)]"
+                className="text-[11px] tracking-[0.3em] text-[var(--accent)]"
               />
-              <HeroHeadline className="mt-6 text-5xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-7xl">
-                Know what happens next.
+              <HeroHeadline className="mt-7 text-6xl font-semibold leading-[0.98] tracking-tight text-balance text-[var(--bone)] sm:text-8xl">
+                Know what happens{" "}
+                <span style={{ color: "var(--accent)" }}>next.</span>
               </HeroHeadline>
               <p
                 data-reveal
-                className="mx-auto mt-6 max-w-xl text-balance text-lg text-[var(--bone-dim)]"
+                className="mx-auto mt-8 max-w-xl text-balance text-lg text-[var(--bone-dim)]"
               >
                 Right now, you probably find out about a stockout the day a
                 customer asks where their order is. By then it&apos;s already
@@ -86,22 +107,110 @@ export default function HomePage() {
             </RevealSection>
           </section>
 
-          {/* How we actually work — 3D pipeline */}
-          <section id="how-it-works" className="relative z-10 px-4 py-24 sm:py-32">
+          {/* What changes — before/after, and what we're building */}
+          <section className="relative z-10 px-4 py-24 sm:py-32">
             <div className="mx-auto max-w-5xl">
               <RevealSection className="mx-auto max-w-xl text-center">
-                <Eyebrow n="01">How we work</Eyebrow>
+                <div data-reveal><Eyebrow n="00">The change</Eyebrow></div>
                 <h2 data-reveal className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
-                  This is the exact pipeline running on your data.
+                  What you&apos;ve been missing — and what changes now.
                 </h2>
                 <p data-reveal className="mt-4 text-[var(--bone-dim)]">
-                  Not a diagram we drew for the website — this is the real
-                  sequence: your data goes in one end, a decision with
-                  evidence comes out the other, and nothing moves without you.
+                  Foresight is a daily watch on your stock and suppliers,
+                  built for teams too busy to watch it themselves. Here&apos;s
+                  the difference it makes.
                 </p>
               </RevealSection>
 
-              <Flow3D />
+              <RevealSection className="mt-14 grid gap-5 sm:grid-cols-2" stagger={0.1}>
+                <div data-reveal>
+                  <BezelCard className="h-full">
+                    <div className="h-full p-7">
+                      <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--bone-dim)]">
+                        Without Foresight
+                      </p>
+                      <ul className="mt-5 space-y-3.5">
+                        {MISSED.map((item) => (
+                          <li key={item} className="flex items-start gap-2.5 text-sm">
+                            <svg viewBox="0 0 16 16" fill="none" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--bone-dim)]">
+                              <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                            </svg>
+                            <span className="text-[var(--bone)]/70">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </BezelCard>
+                </div>
+
+                <div data-reveal>
+                  <BezelCard className="h-full" glow>
+                    <div className="h-full p-7">
+                      <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--accent)]">
+                        With Foresight
+                      </p>
+                      <ul className="mt-5 space-y-3.5">
+                        {GAINED.map((item) => (
+                          <li key={item} className="flex items-start gap-2.5 text-sm">
+                            <svg viewBox="0 0 16 16" fill="none" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]">
+                              <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <span className="text-[var(--bone)]">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </BezelCard>
+                </div>
+              </RevealSection>
+
+              <RevealSection className="mt-16" stagger={0.1}>
+                <div data-reveal className="text-center">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--bone-dim)]">
+                    What we&apos;re building
+                  </span>
+                </div>
+                <div className="mt-8 grid gap-5 sm:grid-cols-3">
+                  {ROADMAP.map((item) => (
+                    <div key={item.title} data-reveal>
+                      <BezelCard className="h-full">
+                        <div className="h-full space-y-2.5 p-6">
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] ${
+                              item.status === "Live"
+                                ? "bg-[var(--teal)]/15 text-[var(--teal)]"
+                                : "bg-[var(--amber)]/15 text-[var(--amber)]"
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                          <h3 className="font-medium text-[var(--bone)]">{item.title}</h3>
+                          <p className="text-sm text-[var(--bone-dim)]">{item.body}</p>
+                        </div>
+                      </BezelCard>
+                    </div>
+                  ))}
+                </div>
+              </RevealSection>
+            </div>
+          </section>
+
+          {/* How we actually work — messy data in, clean decisions out */}
+          <section id="how-it-works" className="relative z-10 px-4 py-24 sm:py-32">
+            <div className="mx-auto max-w-6xl">
+              <RevealSection className="mx-auto max-w-xl text-center">
+                <Eyebrow n="01">How we work</Eyebrow>
+                <h2 data-reveal className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
+                  Your data is messy. What comes out the other side isn&apos;t.
+                </h2>
+                <p data-reveal className="mt-4 text-[var(--bone-dim)]">
+                  Orders, inventory, supplier records — scattered and noisy
+                  going in. Foresight resolves it into a handful of clear
+                  things worth acting on.
+                </p>
+              </RevealSection>
+
+              <DataConverge />
             </div>
           </section>
 
@@ -123,7 +232,7 @@ export default function HomePage() {
                   <div key={stat.label} data-reveal>
                     <BezelCard className="h-full" glow>
                       <div className="flex h-full flex-col items-center justify-center gap-1.5 px-4 py-7 text-center">
-                        <div className="font-mono text-3xl font-semibold text-[var(--teal)] sm:text-4xl">
+                        <div className="font-mono text-3xl font-semibold text-[var(--accent)] sm:text-4xl">
                           <StatCounter value={stat.value} suffix={stat.suffix} />
                         </div>
                         <p className="text-xs text-[var(--bone-dim)]">{stat.label}</p>
@@ -162,7 +271,7 @@ export default function HomePage() {
                     "Every past recommendation is tracked against what actually happened",
                   ].map((item) => (
                     <li key={item} data-reveal className="flex items-start gap-2.5">
-                      <svg viewBox="0 0 16 16" fill="none" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--teal)]">
+                      <svg viewBox="0 0 16 16" fill="none" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]">
                         <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <span className="text-[var(--bone)]/80">{item}</span>
@@ -191,7 +300,7 @@ export default function HomePage() {
                           <span className="font-mono text-xs text-[var(--bone)]">6.5</span>
                         </div>
                         <div className="h-1.5 rounded-full bg-[var(--bone)]/10">
-                          <div className="h-full w-[65%] rounded-full bg-[var(--teal)]" />
+                          <div className="h-full w-[65%] rounded-full bg-[var(--accent)]" />
                         </div>
                       </div>
                       <p className="text-xs text-[var(--bone-dim)]">
@@ -211,7 +320,7 @@ export default function HomePage() {
             <RevealSection className="mx-auto max-w-4xl">
               <div
                 data-reveal
-                className="overflow-hidden rounded-[2rem] border border-[var(--orange)]/20 bg-[radial-gradient(80%_120%_at_50%_0%,rgba(242,121,60,0.12),transparent)] px-8 py-16 text-center sm:px-16"
+                className="overflow-hidden rounded-[2rem] border border-[var(--accent)]/20 bg-[radial-gradient(80%_120%_at_50%_0%,var(--accent-wash),transparent)] px-8 py-16 text-center sm:px-16"
               >
                 <Eyebrow n="03">Always your call</Eyebrow>
                 <h2 className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
