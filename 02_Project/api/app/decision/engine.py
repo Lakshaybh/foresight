@@ -86,14 +86,42 @@ def decide_for_signal(cur, signal_row: tuple) -> DecisionResult:
     if metric == "stockout_risk":
         risk_score = float(deviation)
         confidence = _confidence_for_stockout_risk(risk_score)
+        required_days = float(baseline_value)
+        days_remaining = float(observed_value)
         evidence = {
             "metric": metric,
             "entity_type": entity_type,
             "entity_id": str(entity_id),
-            "required_days": float(baseline_value),
-            "days_of_stock_remaining": float(observed_value),
+            "required_days": required_days,
+            "days_of_stock_remaining": days_remaining,
             "risk_score": risk_score,
         }
+
+        # Real financial framing, from real numbers already on file for this
+        # product — never invented. Reorder cost: what covering the required
+        # window costs at this product's own unit cost. Lost-revenue estimate:
+        # units that would go unsold during the gap between running out and
+        # the next delivery arriving, at this product's own list price.
+        cur.execute(
+            "SELECT avg_daily_demand FROM inventory_snapshot WHERE product_id = %s ORDER BY snapshot_date DESC LIMIT 1",
+            (entity_id,),
+        )
+        demand_row = cur.fetchone()
+        cur.execute("SELECT unit_cost, list_price FROM product WHERE product_id = %s", (entity_id,))
+        price_row = cur.fetchone()
+
+        if demand_row and price_row:
+            avg_daily_demand = float(demand_row[0])
+            unit_cost, list_price = float(price_row[0]), float(price_row[1])
+            reorder_units = max(0, round(avg_daily_demand * required_days))
+            shortfall_days = max(0.0, required_days - days_remaining)
+            lost_units = max(0, round(avg_daily_demand * shortfall_days))
+            evidence.update({
+                "reorder_units": reorder_units,
+                "reorder_cost": round(reorder_units * unit_cost, 2),
+                "lost_units_if_no_action": lost_units,
+                "lost_revenue_if_no_action": round(lost_units * list_price, 2),
+            })
 
         action = "reorder_now" if confidence >= CONFIDENCE_THRESHOLD else "monitor"
         return DecisionResult(str(signal_id), action, confidence, "ops_manager", evidence)

@@ -47,6 +47,51 @@ function projectedRunOutDate(daysRemaining: number): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function money(n: number): string {
+  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
+
+// Real numbers only — computed by the API from this product's own unit
+// cost/list price and current demand rate, never invented. Renders
+// nothing if the engine didn't have enough data to compute it (e.g. no
+// inventory snapshot yet), rather than showing a fake $0.
+function FinancialFraming({ evidence }: { evidence: Record<string, unknown> }) {
+  const reorderCost = evidence.reorder_cost as number | undefined;
+  const lostRevenue = evidence.lost_revenue_if_no_action as number | undefined;
+  const reorderUnits = evidence.reorder_units as number | undefined;
+  const lostUnits = evidence.lost_units_if_no_action as number | undefined;
+
+  if (reorderCost == null || lostRevenue == null) return null;
+
+  const worseToWait = lostRevenue > reorderCost;
+
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--bone)]/[0.02] p-4">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">What this actually costs</p>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div className="rounded-lg bg-[var(--bone)]/[0.03] p-3">
+          <p className="text-[11px] text-[var(--bone-dim)]">Reorder now ({reorderUnits} units)</p>
+          <p className="mt-0.5 text-lg font-semibold text-[var(--bone)]">{money(reorderCost)}</p>
+        </div>
+        <div
+          className="rounded-lg p-3"
+          style={{ background: worseToWait ? "color-mix(in srgb, var(--orange) 10%, transparent)" : "var(--bone)/[0.03]" }}
+        >
+          <p className="text-[11px] text-[var(--bone-dim)]">If you do nothing ({lostUnits} units unsold)</p>
+          <p className={`mt-0.5 text-lg font-semibold ${worseToWait ? "text-[var(--orange)]" : "text-[var(--bone)]"}`}>
+            {money(lostRevenue)}
+          </p>
+        </div>
+      </div>
+      {worseToWait && (
+        <p className="mt-2.5 text-xs text-[var(--orange)]">
+          Waiting costs {money(lostRevenue - reorderCost)} more than acting now.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function DecisionEvidence({
   evidence,
   entityName,
@@ -100,6 +145,7 @@ export function DecisionEvidence({
           unit="days"
           alert={remaining < required}
         />
+        <FinancialFraming evidence={evidence} />
       </div>
     );
   }
