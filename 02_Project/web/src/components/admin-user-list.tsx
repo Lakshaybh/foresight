@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 
 type BusinessProfile = {
   user_id: string;
@@ -34,9 +33,35 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+const TABS = ["pending", "approved", "rejected", "all"] as const;
+type Tab = (typeof TABS)[number];
+
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    pending: "bg-[var(--amber)]/15 text-[var(--amber)]",
+    approved: "bg-[var(--teal)]/15 text-[var(--teal)]",
+    rejected: "bg-[var(--orange)]/15 text-[var(--orange)]",
+  };
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${styles[status] ?? "bg-[var(--bone)]/10 text-[var(--bone-dim)]"}`}>
+      {status}
+    </span>
+  );
+}
+
+function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
+  return (
+    <div className={full ? "sm:col-span-2" : undefined}>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">{label}</p>
+      <p className="mt-0.5 text-sm text-[var(--bone)]/90">{children}</p>
+    </div>
+  );
+}
+
 export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] }) {
   const [accounts, setAccounts] = useState(initialAccounts);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("pending");
   const supabase = createClient();
 
   async function setStatus(userId: string, status: "approved" | "rejected") {
@@ -48,77 +73,101 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
     }
   }
 
-  if (accounts.length === 0) {
-    return <p className="mt-8 text-sm text-muted-foreground">No accounts yet.</p>;
-  }
+  const counts = useMemo(
+    () => ({
+      pending: accounts.filter((a) => a.status === "pending").length,
+      approved: accounts.filter((a) => a.status === "approved").length,
+      rejected: accounts.filter((a) => a.status === "rejected").length,
+      all: accounts.length,
+    }),
+    [accounts]
+  );
+
+  const filtered = tab === "all" ? accounts : accounts.filter((a) => a.status === tab);
 
   return (
-    <div className="mt-6 divide-y divide-border rounded-md border border-border">
-      {accounts.map((a) => (
-        <div key={a.user_id} className="space-y-4 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium">{a.email}</p>
-              <p className="text-xs text-muted-foreground">
-                {a.role} · {a.status}
+    <div>
+      <div className="flex gap-1.5 rounded-full border border-[var(--line)] bg-[var(--bone)]/[0.02] p-1">
+        {TABS.map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 rounded-full py-1.5 text-xs font-medium capitalize transition-all duration-300 ${
+              tab === t ? "bg-[var(--accent)] text-[var(--void)]" : "text-[var(--bone-dim)] hover:text-[var(--bone)]"
+            }`}
+          >
+            {t} <span className="opacity-70">({counts[t]})</span>
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="mt-8 text-center text-sm text-[var(--bone-dim)]">No accounts in this list.</p>
+      ) : (
+        <div className="mt-6 space-y-3">
+          {filtered.map((a) => (
+            <div key={a.user_id} className="rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <p className="text-sm font-medium text-[var(--bone)]">{a.profile?.business_name ?? a.email}</p>
+                  <StatusBadge status={a.status} />
+                  {a.role === "admin" && (
+                    <span className="rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--accent)]">
+                      admin
+                    </span>
+                  )}
+                </div>
+                {a.status === "pending" && (
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      disabled={busyId === a.user_id}
+                      onClick={() => setStatus(a.user_id, "approved")}
+                      className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--void)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      disabled={busyId === a.user_id}
+                      onClick={() => setStatus(a.user_id, "rejected")}
+                      className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <p className="mt-1 text-xs text-[var(--bone-dim)]">
+                {a.email}
                 {!a.terms_accepted_at && " · T&C not yet accepted"}
                 {a.terms_accepted_at && !a.profile && " · profile not yet submitted"}
               </p>
-            </div>
-            {a.status === "pending" && (
-              <div className="flex shrink-0 gap-2">
-                <Button
-                  size="sm"
-                  disabled={busyId === a.user_id}
-                  onClick={() => setStatus(a.user_id, "approved")}
-                >
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busyId === a.user_id}
-                  onClick={() => setStatus(a.user_id, "rejected")}
-                >
-                  Reject
-                </Button>
-              </div>
-            )}
-          </div>
 
-          {a.profile && (
-            <div className="grid gap-x-6 gap-y-2 rounded-md bg-muted/40 p-3.5 text-sm sm:grid-cols-2">
-              <Field label="Business">{a.profile.business_name}</Field>
-              <Field label="Type">{BUSINESS_TYPE_LABELS[a.profile.business_type] ?? a.profile.business_type}</Field>
-              <Field label="Team size">{a.profile.team_size} people</Field>
-              <Field label="Country">{a.profile.country || "—"}</Field>
-              <Field label="What they do" full>{a.profile.what_you_do}</Field>
-              <Field label="Primary challenge" full>{a.profile.primary_challenge}</Field>
-              {a.profile.website && (
-                <Field label="Website" full>
-                  <a
-                    href={a.profile.website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary underline underline-offset-2"
-                  >
-                    {a.profile.website}
-                  </a>
-                </Field>
+              {a.profile && (
+                <div className="mt-4 grid gap-x-6 gap-y-3 border-t border-[var(--line)] pt-4 sm:grid-cols-2">
+                  <Field label="Type">{BUSINESS_TYPE_LABELS[a.profile.business_type] ?? a.profile.business_type}</Field>
+                  <Field label="Team size">{a.profile.team_size} people</Field>
+                  <Field label="Country">{a.profile.country || "—"}</Field>
+                  {a.profile.website && (
+                    <Field label="Website">
+                      <a
+                        href={a.profile.website}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[var(--accent)] underline underline-offset-2"
+                      >
+                        {a.profile.website}
+                      </a>
+                    </Field>
+                  )}
+                  <Field label="What they do" full>{a.profile.what_you_do}</Field>
+                  <Field label="Primary challenge" full>{a.profile.primary_challenge}</Field>
+                </div>
               )}
             </div>
-          )}
+          ))}
         </div>
-      ))}
-    </div>
-  );
-}
-
-function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
-  return (
-    <div className={full ? "sm:col-span-2" : undefined}>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-foreground/90">{children}</p>
+      )}
     </div>
   );
 }

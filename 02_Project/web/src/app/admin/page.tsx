@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { SignOutButton } from "@/components/sign-out-button";
+import { AppShell } from "@/components/app-shell";
 import { AdminUserList } from "@/components/admin-user-list";
 
 export default async function AdminPage() {
@@ -29,16 +29,11 @@ export default async function AdminPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-16">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Admin — Access Requests</h1>
-        <SignOutButton />
-      </div>
-      <p className="mt-2 text-sm text-muted-foreground">
+    <AppShell title="Command Center" email={user.email}>
+      <p className="-mt-6 mb-8 text-sm text-[var(--bone-dim)]">
         Approve or reject accounts waiting for access.
       </p>
-
       <AdminUserList initialAccounts={accountsWithProfile} />
-    </main>
+    </AppShell>
   );
 }
