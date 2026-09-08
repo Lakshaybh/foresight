@@ -15,5 +15,15 @@ class Settings(BaseSettings):
     # by design. Never hardcode this; it lives only in the local .env file.
     database_url: str | None = None
 
+    # Brevo SMTP — same credentials already used for Supabase Auth emails,
+    # reused here for urgent-signal alerts. All optional: if unset, alerts
+    # are skipped with a log line rather than the app crashing or pretending
+    # to send something it didn't.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_sender_email: str | None = None
+
 
 settings = Settings()

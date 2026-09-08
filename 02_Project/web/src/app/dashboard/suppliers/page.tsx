@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { TrendChart } from "@/components/trend-chart";
 import { apiFetch } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 
@@ -13,7 +14,11 @@ type Supplier = {
   avg_lead_time_days: number | null;
   latest_drift_days: number | null;
   latest_drift_detected_at: string | null;
+  faster_alternative_name: string | null;
+  faster_alternative_lead_time_days: number | null;
 };
+
+type DeliveryPoint = { order_date: string; delay_days: number };
 
 function ReliabilityBadge({ supplier }: { supplier: Supplier }) {
   if (supplier.order_count === 0) {
@@ -33,10 +38,34 @@ function ReliabilityBadge({ supplier }: { supplier: Supplier }) {
   );
 }
 
+function DeliveryHistory({ supplierId }: { supplierId: string }) {
+  const [points, setPoints] = useState<DeliveryPoint[] | null>(null);
+
+  useEffect(() => {
+    apiFetch<DeliveryPoint[]>(`/suppliers/${supplierId}/deliveries`).then(setPoints).catch(() => setPoints([]));
+  }, [supplierId]);
+
+  if (points === null) return <p className="text-xs text-[var(--bone-dim)]">Loading trend…</p>;
+
+  return (
+    <div className="mt-3 border-t border-[var(--line)] pt-3">
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">
+        Delivery delay per order, over time (positive = late)
+      </p>
+      <TrendChart
+        points={points.map((p) => ({ label: p.order_date.slice(5), value: p.delay_days }))}
+        color="var(--orange)"
+        unit="d"
+      />
+    </div>
+  );
+}
+
 export default function SuppliersPage() {
   const [email, setEmail] = useState<string | undefined>();
   const [suppliers, setSuppliers] = useState<Supplier[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     createClient()
@@ -90,6 +119,24 @@ export default function SuppliersPage() {
                   </p>
                 </div>
               </div>
+
+              {s.faster_alternative_name && (
+                <div className="mt-3 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-wash)] px-3 py-2 text-xs text-[var(--bone)]">
+                  <strong className="text-[var(--accent)]">{s.faster_alternative_name}</strong> delivers similar
+                  products {(s.avg_lead_time_days! - s.faster_alternative_lead_time_days!).toFixed(1)} days faster on
+                  average — worth considering for your next order.
+                </div>
+              )}
+
+              {s.order_count > 0 && (
+                <button
+                  onClick={() => setExpanded(expanded === s.supplier_id ? null : s.supplier_id)}
+                  className="mt-3 text-xs font-medium text-[var(--accent)] hover:underline"
+                >
+                  {expanded === s.supplier_id ? "Hide delivery trend" : "Show delivery trend"}
+                </button>
+              )}
+              {expanded === s.supplier_id && <DeliveryHistory supplierId={s.supplier_id} />}
             </div>
           ))}
         </div>

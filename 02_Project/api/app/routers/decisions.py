@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.auth import get_current_user_id
 from app.db import get_connection
 from app.decision.engine import persist_decisions, run_decision_engine
+from app.notify import URGENT_CONFIDENCE_THRESHOLD, send_urgent_alert
 
 router = APIRouter(prefix="/decisions", tags=["decisions"])
 
@@ -107,6 +108,19 @@ def run(
         decisions = run_decision_engine(cur, tenant_id=user_id)
         created = persist_decisions(cur, decisions, tenant_id=user_id)
         conn.commit()
+
+        # Urgent signals get emailed, not just saved for someone to
+        # eventually notice — this is what makes the product tap the
+        # owner's shoulder instead of waiting to be checked on.
+        urgent = [d for d in decisions if d.confidence >= URGENT_CONFIDENCE_THRESHOLD and d.action_type != "monitor"]
+        if urgent:
+            cur.execute("SELECT email FROM user_account WHERE user_id = %s", (user_id,))
+            email_row = cur.fetchone()
+            if email_row:
+                name_cache: dict[tuple[str, str], str | None] = {}
+                for d in urgent:
+                    entity_name = _resolve_entity_name(cur, d.evidence, name_cache) or "An item in your data"
+                    send_urgent_alert(email_row[0], d.action_type, entity_name, d.confidence, d.evidence)
 
     return RunResult(created=created)
 
