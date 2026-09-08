@@ -105,30 +105,35 @@ def decide_for_signal(cur, signal_row: tuple) -> DecisionResult:
     raise ValueError(f"No decision mapping defined for signal metric '{metric}'")
 
 
-def run_decision_engine(cur) -> list[DecisionResult]:
+def run_decision_engine(cur, tenant_id: str | None = None) -> list[DecisionResult]:
     """Only considers signals that don't already have a decision — each
-    signal gets exactly one decision, ever."""
-    cur.execute("""
+    signal gets exactly one decision, ever. tenant_id=None is the original
+    global/demo run; a real caller scopes this to their own signals only."""
+    cur.execute(
+        """
         SELECT s.signal_id, s.entity_type, s.entity_id, s.metric,
                s.baseline_value, s.observed_value, s.deviation
         FROM signal s
         WHERE NOT EXISTS (SELECT 1 FROM decision d WHERE d.signal_id = s.signal_id)
+          AND s.tenant_id IS NOT DISTINCT FROM %s
         ORDER BY s.detected_at
-    """)
+        """,
+        (tenant_id,),
+    )
     rows = cur.fetchall()
     return [decide_for_signal(cur, row) for row in rows]
 
 
-def persist_decisions(cur, decisions: list[DecisionResult]) -> int:
+def persist_decisions(cur, decisions: list[DecisionResult], tenant_id: str | None = None) -> int:
     from psycopg.types.json import Jsonb
 
     for d in decisions:
         cur.execute(
             """
             INSERT INTO decision
-                (signal_id, action_type, evidence, confidence, status, owner_role)
-            VALUES (%s, %s, %s, %s, 'open', %s)
+                (signal_id, action_type, evidence, confidence, status, owner_role, tenant_id)
+            VALUES (%s, %s, %s, %s, 'open', %s, %s)
             """,
-            (d.signal_id, d.action_type, Jsonb(d.evidence), d.confidence, d.owner_role),
+            (d.signal_id, d.action_type, Jsonb(d.evidence), d.confidence, d.owner_role, tenant_id),
         )
     return len(decisions)

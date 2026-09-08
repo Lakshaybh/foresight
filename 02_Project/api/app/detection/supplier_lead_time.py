@@ -85,9 +85,11 @@ def detect_for_supplier(delay_days_by_order_date: list[tuple[date, float]]) -> L
 METRIC_NAME = "lead_time_drift_days"
 
 
-def persist_signals(cur, signals: list[LeadTimeSignal]) -> tuple[int, int]:
+def persist_signals(cur, signals: list[LeadTimeSignal], tenant_id: str | None = None) -> tuple[int, int]:
     """Idempotent insert: won't create a duplicate signal for the same
-    supplier + metric on the same calendar day. Returns (inserted, skipped)."""
+    supplier + metric on the same calendar day. Returns (inserted, skipped).
+    tenant_id=None preserves the old global/demo-run behavior; a real caller
+    passes their own id so the signal is scoped to their data only."""
     inserted = 0
     skipped = 0
     for sig in signals:
@@ -96,8 +98,9 @@ def persist_signals(cur, signals: list[LeadTimeSignal]) -> tuple[int, int]:
             SELECT 1 FROM signal
             WHERE entity_type = 'supplier' AND entity_id = %s AND metric = %s
               AND detected_at::date = CURRENT_DATE
+              AND tenant_id IS NOT DISTINCT FROM %s
             """,
-            (sig.supplier_id, METRIC_NAME),
+            (sig.supplier_id, METRIC_NAME, tenant_id),
         )
         if cur.fetchone():
             skipped += 1
@@ -106,28 +109,33 @@ def persist_signals(cur, signals: list[LeadTimeSignal]) -> tuple[int, int]:
         cur.execute(
             """
             INSERT INTO signal
-                (entity_type, entity_id, metric, baseline_value, observed_value, deviation, detected_at)
-            VALUES ('supplier', %s, %s, %s, %s, %s, %s)
+                (entity_type, entity_id, metric, baseline_value, observed_value, deviation, detected_at, tenant_id)
+            VALUES ('supplier', %s, %s, %s, %s, %s, %s, %s)
             """,
             (sig.supplier_id, METRIC_NAME, sig.baseline_value, sig.observed_value,
-             sig.deviation, sig.detected_at),
+             sig.deviation, sig.detected_at, tenant_id),
         )
         inserted += 1
 
     return inserted, skipped
 
 
-def run_detection(cur) -> list[LeadTimeSignal]:
+def run_detection(cur, tenant_id: str | None = None) -> list[LeadTimeSignal]:
     """Runs detection for every supplier with enough delivery history, against
     the live database. Does not write anything — the caller decides how to
-    persist results (see scripts/run_detection.py)."""
-    cur.execute("""
+    persist results (see scripts/run_detection.py). tenant_id=None means the
+    original global/demo run; a real caller scopes this to their own data."""
+    cur.execute(
+        """
         SELECT supplier_id, order_date,
                (actual_delivery_date - expected_delivery_date) AS delay_days
         FROM purchase_order
         WHERE actual_delivery_date IS NOT NULL
+          AND tenant_id IS NOT DISTINCT FROM %s
         ORDER BY supplier_id, order_date
-    """)
+        """,
+        (tenant_id,),
+    )
 
     by_supplier: dict[str, list[tuple[date, float]]] = {}
     for supplier_id, order_date_, delay_days in cur.fetchall():

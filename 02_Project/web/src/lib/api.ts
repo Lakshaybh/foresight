@@ -37,3 +37,24 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
   return res.json() as Promise<T>;
 }
+
+// Separate from apiFetch because a file upload must NOT set its own
+// Content-Type — the browser needs to set it (with the multipart
+// boundary) itself when the body is a FormData.
+export async function apiUpload<T>(path: string, file: File): Promise<T> {
+  if (!API_BASE_URL) throw new ApiNotConfiguredError();
+
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: await authHeader(),
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`API ${res.status}: ${body || res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}

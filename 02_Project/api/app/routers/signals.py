@@ -4,6 +4,7 @@ import psycopg
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from app.auth import get_current_user_id
 from app.db import get_connection
 from app.detection.supplier_lead_time import persist_signals, run_detection
 
@@ -28,14 +29,21 @@ class DetectionResult(BaseModel):
 
 
 @router.get("", response_model=list[Signal])
-def list_signals(conn: psycopg.Connection = Depends(get_connection)) -> list[Signal]:
+def list_signals(
+    user_id: str = Depends(get_current_user_id),
+    conn: psycopg.Connection = Depends(get_connection),
+) -> list[Signal]:
     with conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT signal_id, entity_type, entity_id, metric,
                    baseline_value, observed_value, deviation, detected_at
             FROM signal
+            WHERE tenant_id = %s
             ORDER BY detected_at DESC
-        """)
+            """,
+            (user_id,),
+        )
         rows = cur.fetchall()
 
     return [
@@ -49,10 +57,13 @@ def list_signals(conn: psycopg.Connection = Depends(get_connection)) -> list[Sig
 
 
 @router.post("/detect/supplier-lead-time", response_model=DetectionResult)
-def detect_supplier_lead_time(conn: psycopg.Connection = Depends(get_connection)) -> DetectionResult:
+def detect_supplier_lead_time(
+    user_id: str = Depends(get_current_user_id),
+    conn: psycopg.Connection = Depends(get_connection),
+) -> DetectionResult:
     with conn.cursor() as cur:
-        found = run_detection(cur)
-        inserted, skipped = persist_signals(cur, found)
+        found = run_detection(cur, tenant_id=user_id)
+        inserted, skipped = persist_signals(cur, found, tenant_id=user_id)
         conn.commit()
 
     return DetectionResult(detected=len(found), inserted=inserted, skipped_already_today=skipped)

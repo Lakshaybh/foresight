@@ -41,38 +41,54 @@ class StockoutForecast:
     risk_score: float
 
 
-def compute_forecast(cur) -> list[StockoutForecast]:
-    cur.execute("""
+def compute_forecast(cur, tenant_id: str | None = None) -> list[StockoutForecast]:
+    cur.execute(
+        """
         SELECT DISTINCT ON (product_id)
             product_id, snapshot_date, stock_on_hand, avg_daily_demand
         FROM inventory_snapshot
+        WHERE tenant_id IS NOT DISTINCT FROM %s
         ORDER BY product_id, snapshot_date DESC
-    """)
+        """,
+        (tenant_id,),
+    )
     latest_snapshot = {
         row[0]: {"snapshot_date": row[1], "stock_on_hand": float(row[2]), "avg_daily_demand": float(row[3])}
         for row in cur.fetchall()
     }
 
-    cur.execute("""
+    cur.execute(
+        """
         SELECT DISTINCT ON (product_id) product_id, supplier_id
         FROM purchase_order
+        WHERE tenant_id IS NOT DISTINCT FROM %s
         ORDER BY product_id, order_date DESC
-    """)
+        """,
+        (tenant_id,),
+    )
     supplier_by_product = dict(cur.fetchall())
 
-    cur.execute("""
+    cur.execute(
+        """
         SELECT supplier_id, AVG(expected_delivery_date - order_date)
         FROM purchase_order
+        WHERE tenant_id IS NOT DISTINCT FROM %s
         GROUP BY supplier_id
-    """)
+        """,
+        (tenant_id,),
+    )
     baseline_lead_time_by_supplier = {row[0]: float(row[1]) for row in cur.fetchall()}
 
-    cur.execute("""
+    cur.execute(
+        """
         SELECT DISTINCT ON (entity_id) entity_id, baseline_value, observed_value, detected_at
         FROM signal
         WHERE entity_type = 'supplier' AND metric = 'lead_time_drift_days'
+          AND tenant_id IS NOT DISTINCT FROM %s
         ORDER BY entity_id, detected_at DESC
-    """)
+        """,
+        (tenant_id,),
+    )
     drift_by_supplier = {
         row[0]: max(0.0, float(row[2]) - float(row[1]))
         for row in cur.fetchall()
@@ -116,7 +132,9 @@ def compute_forecast(cur) -> list[StockoutForecast]:
 METRIC_NAME = "stockout_risk"
 
 
-def persist_risk_signals(cur, forecasts: list[StockoutForecast], threshold: float = RISK_SIGNAL_THRESHOLD) -> tuple[int, int]:
+def persist_risk_signals(
+    cur, forecasts: list[StockoutForecast], threshold: float = RISK_SIGNAL_THRESHOLD, tenant_id: str | None = None
+) -> tuple[int, int]:
     """Idempotent insert, same pattern as detection.persist_signals: won't
     duplicate a signal for the same product + metric on the same day. Only
     forecasts at or above the risk threshold are worth surfacing."""
@@ -131,8 +149,9 @@ def persist_risk_signals(cur, forecasts: list[StockoutForecast], threshold: floa
             SELECT 1 FROM signal
             WHERE entity_type = 'product' AND entity_id = %s AND metric = %s
               AND detected_at::date = CURRENT_DATE
+              AND tenant_id IS NOT DISTINCT FROM %s
             """,
-            (f.product_id, METRIC_NAME),
+            (f.product_id, METRIC_NAME, tenant_id),
         )
         if cur.fetchone():
             skipped += 1
@@ -141,10 +160,10 @@ def persist_risk_signals(cur, forecasts: list[StockoutForecast], threshold: floa
         cur.execute(
             """
             INSERT INTO signal
-                (entity_type, entity_id, metric, baseline_value, observed_value, deviation, detected_at)
-            VALUES ('product', %s, %s, %s, %s, %s, now())
+                (entity_type, entity_id, metric, baseline_value, observed_value, deviation, detected_at, tenant_id)
+            VALUES ('product', %s, %s, %s, %s, %s, now(), %s)
             """,
-            (f.product_id, METRIC_NAME, f.required_days, f.days_of_stock_remaining, f.risk_score),
+            (f.product_id, METRIC_NAME, f.required_days, f.days_of_stock_remaining, f.risk_score, tenant_id),
         )
         inserted += 1
 

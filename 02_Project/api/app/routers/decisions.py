@@ -55,22 +55,44 @@ _SELECT_COLUMNS = """
 
 
 @router.get("", response_model=list[Decision])
-def list_decisions(conn: psycopg.Connection = Depends(get_connection)) -> list[Decision]:
+def list_decisions(
+    user_id: str = Depends(get_current_user_id),
+    conn: psycopg.Connection = Depends(get_connection),
+) -> list[Decision]:
     with conn.cursor() as cur:
-        cur.execute(f"SELECT {_SELECT_COLUMNS} FROM decision ORDER BY created_at DESC")
+        cur.execute(
+            f"SELECT {_SELECT_COLUMNS} FROM decision WHERE tenant_id = %s ORDER BY created_at DESC",
+            (user_id,),
+        )
         rows = cur.fetchall()
 
     return [_row_to_decision(r) for r in rows]
 
 
 @router.post("/run", response_model=RunResult)
-def run(conn: psycopg.Connection = Depends(get_connection)) -> RunResult:
+def run(
+    user_id: str = Depends(get_current_user_id),
+    conn: psycopg.Connection = Depends(get_connection),
+) -> RunResult:
     with conn.cursor() as cur:
-        decisions = run_decision_engine(cur)
-        created = persist_decisions(cur, decisions)
+        decisions = run_decision_engine(cur, tenant_id=user_id)
+        created = persist_decisions(cur, decisions, tenant_id=user_id)
         conn.commit()
 
     return RunResult(created=created)
+
+
+def _check_owned_by(cur, decision_id: str, user_id: str) -> str:
+    """Returns the decision's current status, or raises if it doesn't
+    exist or belongs to a different tenant — reviewing someone else's
+    decision is never allowed, not even by omission."""
+    cur.execute("SELECT status, tenant_id FROM decision WHERE decision_id = %s", (decision_id,))
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(404, "Decision not found")
+    if row[1] != user_id:
+        raise HTTPException(404, "Decision not found")
+    return row[0]
 
 
 @router.patch("/{decision_id}/review", response_model=Decision)
@@ -85,12 +107,9 @@ def review_decision(
     'open' decision can be reviewed, and only once; reviewing again means
     creating a fresh decision, not silently overwriting an audit record."""
     with conn.cursor() as cur:
-        cur.execute("SELECT status FROM decision WHERE decision_id = %s", (decision_id,))
-        row = cur.fetchone()
-        if row is None:
-            raise HTTPException(404, "Decision not found")
-        if row[0] != "open":
-            raise HTTPException(409, f"Decision is already '{row[0]}', not open for review")
+        status = _check_owned_by(cur, decision_id, user_id)
+        if status != "open":
+            raise HTTPException(409, f"Decision is already '{status}', not open for review")
 
         cur.execute(
             f"""
@@ -111,7 +130,7 @@ def review_decision(
 def record_outcome(
     decision_id: str,
     body: OutcomeRequest,
-    user_id: str = Depends(get_current_user_id),  # noqa: ARG001 — auth required, not otherwise used
+    user_id: str = Depends(get_current_user_id),
     conn: psycopg.Connection = Depends(get_connection),
 ) -> Decision:
     """Records what actually happened, after the fact — separate from the
@@ -120,11 +139,8 @@ def record_outcome(
     decision to have already been reviewed; an outcome for something never
     acted on isn't a real observation."""
     with conn.cursor() as cur:
-        cur.execute("SELECT status FROM decision WHERE decision_id = %s", (decision_id,))
-        row = cur.fetchone()
-        if row is None:
-            raise HTTPException(404, "Decision not found")
-        if row[0] == "open":
+        status = _check_owned_by(cur, decision_id, user_id)
+        if status == "open":
             raise HTTPException(
                 409, "Decision must be reviewed (approved/rejected/snoozed) before an outcome can be recorded"
             )

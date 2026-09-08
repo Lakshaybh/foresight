@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { DecisionEvidence } from "@/components/decision-evidence";
 
@@ -85,6 +86,12 @@ function EmptyState() {
         Once your supplier and inventory data is connected, early-warning
         signals and recommended actions will show up here.
       </p>
+      <Link
+        href="/dashboard/upload"
+        className="mt-5 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all hover:brightness-110"
+      >
+        Connect your data
+      </Link>
     </div>
   );
 }
