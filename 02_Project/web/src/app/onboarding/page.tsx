@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
+import { AuthShell } from "@/components/auth-shell";
 import { OnboardingSteps } from "@/components/onboarding-steps";
 
 const BUSINESS_TYPES = [
@@ -30,8 +30,8 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-foreground" htmlFor={htmlFor}>
-        {label} {optional && <span className="font-normal text-muted-foreground">(optional)</span>}
+      <label className="text-sm font-medium text-[var(--bone)]" htmlFor={htmlFor}>
+        {label} {optional && <span className="font-normal text-[var(--bone-dim)]">(optional)</span>}
       </label>
       {children}
     </div>
@@ -39,7 +39,7 @@ function Field({
 }
 
 const inputClass =
-  "w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring";
+  "w-full rounded-lg border border-[var(--line)] bg-[var(--bone)]/[0.03] px-3.5 py-2.5 text-sm text-[var(--bone)] outline-none transition-shadow placeholder:text-[var(--bone-dim)] focus:border-[var(--accent)]/50 focus:ring-2 focus:ring-[var(--accent)]/20";
 
 export default function OnboardingPage() {
   const [businessName, setBusinessName] = useState("");
@@ -81,125 +81,123 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-16">
-      <div className="mx-auto max-w-2xl">
-        <OnboardingSteps current={1} />
+    <AuthShell>
+      <OnboardingSteps current={1} />
 
-        <div className="rounded-2xl border border-border bg-background p-8 shadow-sm sm:p-10">
-          <div className="mb-2 inline-flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-primary" />
-            <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">Foresight</span>
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tell us about your business</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            This is what gets reviewed to approve your access — the more
-            specific, the faster your request can be judged.
-          </p>
+      <div className="rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-8 sm:p-10">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--bone)]">Tell us about your business</h1>
+        <p className="mt-1.5 text-sm text-[var(--bone-dim)]">
+          This is what gets reviewed to approve your access — the more
+          specific, the faster your request can be judged.
+        </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-            <Field label="Business name" htmlFor="businessName">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <Field label="Business name" htmlFor="businessName">
+            <input
+              id="businessName"
+              required
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="Acme Distribution Co."
+              className={inputClass}
+            />
+          </Field>
+
+          <Field label="What type of company do you have?" htmlFor="businessType">
+            <select
+              id="businessType"
+              required
+              value={businessType}
+              onChange={(e) => setBusinessType(e.target.value)}
+              className={inputClass}
+            >
+              <option value="" disabled className="bg-[var(--void-2)]">
+                Select one
+              </option>
+              {BUSINESS_TYPES.map((t) => (
+                <option key={t.value} value={t.value} className="bg-[var(--void-2)]">
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="What does your business do?" htmlFor="whatYouDo">
+            <textarea
+              id="whatYouDo"
+              required
+              rows={2}
+              value={whatYouDo}
+              onChange={(e) => setWhatYouDo(e.target.value)}
+              placeholder="e.g. We import electronics components and distribute them to regional retailers."
+              className={`${inputClass} resize-none`}
+            />
+          </Field>
+
+          <Field label="Team size" htmlFor="teamSize">
+            <select
+              id="teamSize"
+              required
+              value={teamSize}
+              onChange={(e) => setTeamSize(e.target.value)}
+              className={inputClass}
+            >
+              <option value="" disabled className="bg-[var(--void-2)]">
+                Select one
+              </option>
+              {TEAM_SIZES.map((size) => (
+                <option key={size} value={size} className="bg-[var(--void-2)]">
+                  {size} people
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="What help do you want from Foresight?" htmlFor="primaryChallenge">
+            <textarea
+              id="primaryChallenge"
+              required
+              rows={3}
+              value={primaryChallenge}
+              onChange={(e) => setPrimaryChallenge(e.target.value)}
+              placeholder="e.g. We find out about supplier delays only after a customer complains, and by then it's too late to reorder."
+              className={`${inputClass} resize-none`}
+            />
+          </Field>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Country / region" htmlFor="country" optional>
               <input
-                id="businessName"
-                required
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="Acme Distribution Co."
+                id="country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="United States"
                 className={inputClass}
               />
             </Field>
-
-            <Field label="What type of company do you have?" htmlFor="businessType">
-              <select
-                id="businessType"
-                required
-                value={businessType}
-                onChange={(e) => setBusinessType(e.target.value)}
+            <Field label="Website" htmlFor="website" optional>
+              <input
+                id="website"
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://"
                 className={inputClass}
-              >
-                <option value="" disabled>
-                  Select one
-                </option>
-                {BUSINESS_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="What does your business do?" htmlFor="whatYouDo">
-              <textarea
-                id="whatYouDo"
-                required
-                rows={2}
-                value={whatYouDo}
-                onChange={(e) => setWhatYouDo(e.target.value)}
-                placeholder="e.g. We import electronics components and distribute them to regional retailers."
-                className={`${inputClass} resize-none`}
               />
             </Field>
+          </div>
 
-            <Field label="Team size" htmlFor="teamSize">
-              <select
-                id="teamSize"
-                required
-                value={teamSize}
-                onChange={(e) => setTeamSize(e.target.value)}
-                className={inputClass}
-              >
-                <option value="" disabled>
-                  Select one
-                </option>
-                {TEAM_SIZES.map((size) => (
-                  <option key={size} value={size}>
-                    {size} people
-                  </option>
-                ))}
-              </select>
-            </Field>
+          {error && <p className="text-sm text-[var(--orange)]">{error}</p>}
 
-            <Field label="What help do you want from Foresight?" htmlFor="primaryChallenge">
-              <textarea
-                id="primaryChallenge"
-                required
-                rows={3}
-                value={primaryChallenge}
-                onChange={(e) => setPrimaryChallenge(e.target.value)}
-                placeholder="e.g. We find out about supplier delays only after a customer complains, and by then it's too late to reorder."
-                className={`${inputClass} resize-none`}
-              />
-            </Field>
-
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Country / region" htmlFor="country" optional>
-                <input
-                  id="country"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  placeholder="United States"
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Website" htmlFor="website" optional>
-                <input
-                  id="website"
-                  type="url"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://"
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-
-            <Button type="submit" size="lg" className="w-full" disabled={!canSubmit || submitting}>
-              {submitting ? "Submitting..." : "Continue"}
-            </Button>
-          </form>
-        </div>
+          <button
+            type="submit"
+            disabled={!canSubmit || submitting}
+            className="w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? "Submitting..." : "Continue"}
+          </button>
+        </form>
       </div>
-    </main>
+    </AuthShell>
   );
 }
