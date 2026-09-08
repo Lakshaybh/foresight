@@ -21,6 +21,8 @@ type Account = {
   status: string;
   created_at: string;
   terms_accepted_at: string | null;
+  access_expires_at: string | null;
+  admin_notes: string | null;
   profile: BusinessProfile | null;
 };
 
@@ -32,6 +34,13 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   import_export: "Import / export",
   other: "Other",
 };
+
+const DURATION_PRESETS = [
+  { label: "7 days", days: 7 },
+  { label: "30 days", days: 30 },
+  { label: "90 days", days: 90 },
+  { label: "1 year", days: 365 },
+];
 
 const TABS = ["pending", "approved", "rejected", "all"] as const;
 type Tab = (typeof TABS)[number];
@@ -49,6 +58,19 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function AccessBadge({ expiresAt }: { expiresAt: string | null }) {
+  if (!expiresAt) {
+    return <span className="text-xs text-[var(--bone-dim)]">Unlimited access</span>;
+  }
+  const expired = new Date(expiresAt) < new Date();
+  const date = new Date(expiresAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return expired ? (
+    <span className="text-xs text-[var(--orange)]">Access expired {date}</span>
+  ) : (
+    <span className="text-xs text-[var(--teal)]">Active until {date}</span>
+  );
+}
+
 function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
   return (
     <div className={full ? "sm:col-span-2" : undefined}>
@@ -58,19 +80,116 @@ function Field({ label, children, full }: { label: string; children: React.React
   );
 }
 
+function GrantAccessPanel({ userId, onDone }: { userId: string; onDone: (patch: Partial<Account>) => void }) {
+  const [days, setDays] = useState(30);
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const supabase = createClient();
+
+  async function submit() {
+    setBusy(true);
+    const { error } = await supabase.rpc("grant_access", {
+      p_user_id: userId,
+      p_duration_days: days,
+      p_amount: amount ? Number(amount) : null,
+      p_currency: currency,
+      p_note: note || null,
+    });
+    setBusy(false);
+    if (!error) {
+      onDone({ status: "approved", access_expires_at: new Date(Date.now() + days * 86400000).toISOString() });
+    }
+  }
+
+  return (
+    <div className="mt-4 space-y-3 rounded-xl border border-[var(--line)] bg-[var(--bone)]/[0.02] p-4">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <div className="sm:col-span-2">
+          <label className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">Duration</label>
+          <select
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value))}
+            className="mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--void-2)] px-2.5 py-2 text-sm text-[var(--bone)] outline-none focus:border-[var(--accent)]/50"
+          >
+            {DURATION_PRESETS.map((p) => (
+              <option key={p.days} value={p.days}>{p.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">Amount</label>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="500"
+            className="mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--void-2)] px-2.5 py-2 text-sm text-[var(--bone)] outline-none placeholder:text-[var(--bone-dim)] focus:border-[var(--accent)]/50"
+          />
+        </div>
+        <div>
+          <label className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">Currency</label>
+          <input
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            maxLength={3}
+            className="mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--void-2)] px-2.5 py-2 text-sm text-[var(--bone)] outline-none focus:border-[var(--accent)]/50"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">Note</label>
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="e.g. Paid via UPI, 1-month plan"
+          className="mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--void-2)] px-2.5 py-2 text-sm text-[var(--bone)] outline-none placeholder:text-[var(--bone-dim)] focus:border-[var(--accent)]/50"
+        />
+      </div>
+      <button
+        onClick={submit}
+        disabled={busy}
+        className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--void)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {busy ? "Recording…" : "Record payment & grant access"}
+      </button>
+    </div>
+  );
+}
+
 export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] }) {
   const [accounts, setAccounts] = useState(initialAccounts);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("pending");
+  const [openPanel, setOpenPanel] = useState<string | null>(null);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const supabase = createClient();
+
+  function patchAccount(userId: string, patch: Partial<Account>) {
+    setAccounts((prev) => prev.map((a) => (a.user_id === userId ? { ...a, ...patch } : a)));
+  }
 
   async function setStatus(userId: string, status: "approved" | "rejected") {
     setBusyId(userId);
     const { error } = await supabase.from("user_account").update({ status }).eq("user_id", userId);
     setBusyId(null);
-    if (!error) {
-      setAccounts((prev) => prev.map((a) => (a.user_id === userId ? { ...a, status } : a)));
-    }
+    if (!error) patchAccount(userId, { status });
+  }
+
+  async function revoke(userId: string) {
+    setBusyId(userId);
+    const { error } = await supabase.rpc("revoke_access", { p_user_id: userId });
+    setBusyId(null);
+    if (!error) patchAccount(userId, { access_expires_at: new Date().toISOString() });
+  }
+
+  async function saveNote(userId: string) {
+    const notes = noteDrafts[userId] ?? "";
+    setBusyId(userId);
+    const { error } = await supabase.rpc("set_admin_notes", { p_user_id: userId, p_notes: notes || null });
+    setBusyId(null);
+    if (!error) patchAccount(userId, { admin_notes: notes || null });
   }
 
   const counts = useMemo(
@@ -105,67 +224,119 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
         <p className="mt-8 text-center text-sm text-[var(--bone-dim)]">No accounts in this list.</p>
       ) : (
         <div className="mt-6 space-y-3">
-          {filtered.map((a) => (
-            <div key={a.user_id} className="rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <p className="text-sm font-medium text-[var(--bone)]">{a.profile?.business_name ?? a.email}</p>
-                  <StatusBadge status={a.status} />
-                  {a.role === "admin" && (
-                    <span className="rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--accent)]">
-                      admin
-                    </span>
-                  )}
+          {filtered.map((a) => {
+            const hasActiveAccess = a.access_expires_at && new Date(a.access_expires_at) > new Date();
+            return (
+              <div key={a.user_id} className="rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <p className="text-sm font-medium text-[var(--bone)]">{a.profile?.business_name ?? a.email}</p>
+                    <StatusBadge status={a.status} />
+                    {a.role === "admin" && (
+                      <span className="rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--accent)]">
+                        admin
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {a.status === "pending" && (
+                      <>
+                        <button
+                          disabled={busyId === a.user_id}
+                          onClick={() => setStatus(a.user_id, "approved")}
+                          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--void)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          disabled={busyId === a.user_id}
+                          onClick={() => setStatus(a.user_id, "rejected")}
+                          className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    {a.role !== "admin" && (
+                      <button
+                        onClick={() => setOpenPanel(openPanel === a.user_id ? null : a.user_id)}
+                        className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05]"
+                      >
+                        {openPanel === a.user_id ? "Close" : "Manage access"}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {a.status === "pending" && (
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      disabled={busyId === a.user_id}
-                      onClick={() => setStatus(a.user_id, "approved")}
-                      className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--void)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      disabled={busyId === a.user_id}
-                      onClick={() => setStatus(a.user_id, "rejected")}
-                      className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Reject
-                    </button>
+
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <p className="text-xs text-[var(--bone-dim)]">
+                    {a.email}
+                    {!a.terms_accepted_at && " · T&C not yet accepted"}
+                    {a.terms_accepted_at && !a.profile && " · profile not yet submitted"}
+                  </p>
+                  {a.role !== "admin" && <AccessBadge expiresAt={a.access_expires_at} />}
+                </div>
+
+                {a.profile && (
+                  <div className="mt-4 grid gap-x-6 gap-y-3 border-t border-[var(--line)] pt-4 sm:grid-cols-2">
+                    <Field label="Type">{BUSINESS_TYPE_LABELS[a.profile.business_type] ?? a.profile.business_type}</Field>
+                    <Field label="Team size">{a.profile.team_size} people</Field>
+                    <Field label="Country">{a.profile.country || "—"}</Field>
+                    {a.profile.website && (
+                      <Field label="Website">
+                        <a
+                          href={a.profile.website}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[var(--accent)] underline underline-offset-2"
+                        >
+                          {a.profile.website}
+                        </a>
+                      </Field>
+                    )}
+                    <Field label="What they do" full>{a.profile.what_you_do}</Field>
+                    <Field label="Primary challenge" full>{a.profile.primary_challenge}</Field>
                   </div>
                 )}
-              </div>
 
-              <p className="mt-1 text-xs text-[var(--bone-dim)]">
-                {a.email}
-                {!a.terms_accepted_at && " · T&C not yet accepted"}
-                {a.terms_accepted_at && !a.profile && " · profile not yet submitted"}
-              </p>
+                {openPanel === a.user_id && (
+                  <>
+                    <GrantAccessPanel userId={a.user_id} onDone={(patch) => patchAccount(a.user_id, patch)} />
 
-              {a.profile && (
-                <div className="mt-4 grid gap-x-6 gap-y-3 border-t border-[var(--line)] pt-4 sm:grid-cols-2">
-                  <Field label="Type">{BUSINESS_TYPE_LABELS[a.profile.business_type] ?? a.profile.business_type}</Field>
-                  <Field label="Team size">{a.profile.team_size} people</Field>
-                  <Field label="Country">{a.profile.country || "—"}</Field>
-                  {a.profile.website && (
-                    <Field label="Website">
-                      <a
-                        href={a.profile.website}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[var(--accent)] underline underline-offset-2"
+                    {hasActiveAccess && (
+                      <button
+                        disabled={busyId === a.user_id}
+                        onClick={() => revoke(a.user_id)}
+                        className="mt-3 rounded-lg border border-[var(--orange)]/30 px-3 py-1.5 text-xs font-medium text-[var(--orange)] transition-all hover:bg-[var(--orange)]/10 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {a.profile.website}
-                      </a>
-                    </Field>
-                  )}
-                  <Field label="What they do" full>{a.profile.what_you_do}</Field>
-                  <Field label="Primary challenge" full>{a.profile.primary_challenge}</Field>
-                </div>
-              )}
-            </div>
-          ))}
+                        Revoke access now
+                      </button>
+                    )}
+
+                    <div className="mt-4">
+                      <label className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">
+                        Admin notes
+                      </label>
+                      <textarea
+                        rows={2}
+                        defaultValue={a.admin_notes ?? ""}
+                        onChange={(e) => setNoteDrafts((prev) => ({ ...prev, [a.user_id]: e.target.value }))}
+                        placeholder="Internal notes — payment method, agreement details, follow-ups..."
+                        className="mt-1 w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--void-2)] px-2.5 py-2 text-sm text-[var(--bone)] outline-none placeholder:text-[var(--bone-dim)] focus:border-[var(--accent)]/50"
+                      />
+                      <button
+                        disabled={busyId === a.user_id}
+                        onClick={() => saveNote(a.user_id)}
+                        className="mt-2 rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Save note
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

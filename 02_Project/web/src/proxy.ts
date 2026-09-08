@@ -52,7 +52,11 @@ export async function proxy(request: NextRequest) {
   // brand-new sign-in always meets the "tell us about your business" form
   // before anything else, per the product's own onboarding sequence.
   const [{ data: account }, { data: profile }] = await Promise.all([
-    supabase.from("user_account").select("role, status, terms_accepted_at").eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("user_account")
+      .select("role, status, terms_accepted_at, access_expires_at")
+      .eq("user_id", user.id)
+      .maybeSingle(),
     supabase.from("business_profile").select("user_id").eq("user_id", user.id).maybeSingle(),
   ]);
 
@@ -69,11 +73,23 @@ export async function proxy(request: NextRequest) {
   // needs to clear the full onboarding funnel before counting as approved.
   const isFullyApproved = isApprovedAdmin || (hasProfile && termsAccepted && status === "approved");
 
+  // No access_expires_at at all means unlimited (an account approved
+  // without a time-limited grant); admins are never subject to this.
+  const isExpired =
+    !isApprovedAdmin && Boolean(account?.access_expires_at) && new Date(account!.access_expires_at!) < new Date();
+
   // Where someone who isn't fully onboarded/approved yet belongs, in order.
   const nextStep = !hasProfile ? "/onboarding" : !termsAccepted ? "/terms" : "/pending";
 
   if (path === "/login") {
-    return NextResponse.redirect(new URL(isFullyApproved ? homePath : nextStep, request.url));
+    return NextResponse.redirect(new URL(isExpired ? "/access-expired" : isFullyApproved ? homePath : nextStep, request.url));
+  }
+
+  if (isFullyApproved && isExpired) {
+    if (path !== "/access-expired") {
+      return NextResponse.redirect(new URL("/access-expired", request.url));
+    }
+    return response;
   }
 
   if (!isFullyApproved) {
@@ -83,8 +99,8 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // Fully onboarded and approved from here on.
-  if (path === "/onboarding" || path === "/terms" || path === "/pending") {
+  // Fully onboarded, approved, and not expired from here on.
+  if (path === "/onboarding" || path === "/terms" || path === "/pending" || path === "/access-expired") {
     return NextResponse.redirect(new URL(homePath, request.url));
   }
 
