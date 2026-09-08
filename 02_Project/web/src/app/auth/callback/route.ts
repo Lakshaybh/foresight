@@ -17,7 +17,9 @@ export async function GET(request: Request) {
       if (type === "recovery") {
         return NextResponse.redirect(`${origin}/auth/reset-password`);
       }
-      return NextResponse.redirect(`${origin}/terms`);
+      // proxy.ts will forward on to /terms or /pending as needed once this
+      // step is done — this is just the correct first stop for anyone new.
+      return NextResponse.redirect(`${origin}/onboarding`);
     }
   }
 
