@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/client";
 // Base URL of the FastAPI decision-intelligence service. Not set until
 // that service is actually deployed somewhere (Railway/Render/Fly, etc.) —
 // until then, calls here fail loudly rather than silently doing nothing.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
 
 export class ApiNotConfiguredError extends Error {
   constructor() {
