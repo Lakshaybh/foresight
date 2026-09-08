@@ -128,8 +128,8 @@ export default function UploadPage() {
         <UploadCard
           title="1. Suppliers & purchase orders"
           description="Every order you've placed with a supplier, including whether it arrived on time."
-          columns={["supplier_name", "category_name", "product_name", "unit_cost", "list_price", "order_date", "expected_delivery_date", "actual_delivery_date"]}
-          example="Acme Supplies, Electronics, USB Cable, 2.50, 6.00, 2026-06-01, 2026-06-08, 2026-06-11"
+          columns={["supplier_name", "category_name", "product_name", "unit_cost", "list_price", "order_date", "expected_delivery_date", "actual_delivery_date", "quantity_ordered"]}
+          example="Acme Supplies, Electronics, USB Cable, 2.50, 6.00, 2026-06-01, 2026-06-08, 2026-06-11, 100"
           endpoint="/ingest/suppliers"
         />
         <UploadCard
