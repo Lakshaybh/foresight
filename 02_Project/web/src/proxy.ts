@@ -64,7 +64,10 @@ export async function proxy(request: NextRequest) {
   const hasProfile = Boolean(profile);
   const isApprovedAdmin = role === "admin" && status === "approved";
   const homePath = isApprovedAdmin ? "/admin" : "/dashboard";
-  const isFullyApproved = hasProfile && termsAccepted && status === "approved";
+  // An admin is the platform operator, not a customer — they never fill
+  // out a business-profile form about themselves. Only a regular account
+  // needs to clear the full onboarding funnel before counting as approved.
+  const isFullyApproved = isApprovedAdmin || (hasProfile && termsAccepted && status === "approved");
 
   // Where someone who isn't fully onboarded/approved yet belongs, in order.
   const nextStep = !hasProfile ? "/onboarding" : !termsAccepted ? "/terms" : "/pending";
