@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from app.auth import get_current_user_id
 from app.db import get_connection
-from app.notify import send_reaccess_request
+from app.notify import send_payment_link_request, send_reaccess_request
 
 router = APIRouter(prefix="/access", tags=["access"])
 
@@ -45,4 +45,20 @@ def request_reaccess(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
 
     sent = send_reaccess_request(row[0], payload.plan)
+    return {"sent": sent}
+
+
+@router.post("/request-payment-link")
+def request_payment_link(
+    user_id: str = Depends(get_current_user_id),
+    conn: psycopg.Connection = Depends(get_connection),
+) -> dict[str, bool]:
+    with conn.cursor() as cur:
+        cur.execute("SELECT email, requested_plan FROM user_account WHERE user_id = %s", (user_id,))
+        row = cur.fetchone()
+
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+
+    sent = send_payment_link_request(row[0], row[1])
     return {"sent": sent}

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
 import { DarkSignOutButton } from "@/components/dark-sign-out-button";
+import { PaymentLinkRequestButton } from "@/components/payment-link-request-button";
 
 export default async function PendingPage() {
   const supabase = await createClient();
@@ -45,6 +46,7 @@ export default async function PendingPage() {
             </p>
           </div>
 
+          {!rejected && <PaymentLinkRequestButton />}
           <DarkSignOutButton />
         </div>
       </div>

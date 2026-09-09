@@ -86,6 +86,39 @@ def send_reaccess_request(user_email: str, plan: str) -> bool:
         return False
 
 
+def send_payment_link_request(user_email: str, plan: str | None) -> bool:
+    """A still-pending user nudging the admin to send them a payment link
+    before their account has even been approved — same best-effort SMTP
+    pattern as the other notify functions."""
+    if not (settings.smtp_host and settings.smtp_user and settings.smtp_password and settings.smtp_sender_email):
+        logger.warning("Payment-link request not sent (SMTP not configured): %s", user_email)
+        return False
+
+    plan_line = f"Requested plan: {PLAN_LABELS.get(plan, plan)}\n\n" if plan else ""
+    subject = f"Payment link requested: {user_email}"
+    body = (
+        f"{user_email} is waiting for approval and is asking for a payment link.\n\n"
+        f"{plan_line}"
+        "Review and grant access from the admin command center."
+    )
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = settings.smtp_sender_email
+    msg["To"] = settings.admin_notify_email
+    msg["Reply-To"] = user_email
+
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_password)
+            server.sendmail(settings.smtp_sender_email, [settings.admin_notify_email], msg.as_string())
+        return True
+    except Exception:
+        logger.exception("Failed to send payment-link request email for %s", user_email)
+        return False
+
+
 def send_urgent_alert(to_email: str, action_type: str, entity_name: str, confidence: float, evidence: dict) -> bool:
     """Returns True if actually sent. Silently (but loudly in logs) skips
     if SMTP isn't configured — never raises, since a failed notification
