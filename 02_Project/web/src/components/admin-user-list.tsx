@@ -28,7 +28,8 @@ type Account = {
   profile: BusinessProfile | null;
 };
 
-const PLANS = ["trial", "starter", "growth", "enterprise"] as const;
+const PLAN_PRICES: Record<string, number> = { starter: 20, growth: 100, enterprise: 200 };
+const PLANS = Object.keys(PLAN_PRICES) as (keyof typeof PLAN_PRICES)[];
 
 const BUSINESS_TYPE_LABELS: Record<string, string> = {
   ecommerce: "Small e-commerce",
@@ -84,9 +85,17 @@ function Field({ label, children, full }: { label: string; children: React.React
   );
 }
 
-function GrantAccessPanel({ userId, onDone }: { userId: string; onDone: (patch: Partial<Account>) => void }) {
+function GrantAccessPanel({
+  userId,
+  defaultAmount,
+  onDone,
+}: {
+  userId: string;
+  defaultAmount?: string;
+  onDone: (patch: Partial<Account>) => void;
+}) {
   const [days, setDays] = useState(30);
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(defaultAmount ?? "");
   const [currency, setCurrency] = useState("USD");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -260,7 +269,7 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
                     <StatusBadge status={a.status} />
                     {a.role !== "admin" && (
                       <span className="rounded-full bg-[var(--bone)]/10 px-2 py-0.5 text-[10px] font-medium capitalize tracking-wide text-[var(--bone-dim)]">
-                        {a.plan}
+                        {a.plan} · ${PLAN_PRICES[a.plan] ?? "?"}/mo
                       </span>
                     )}
                     {a.role === "admin" && (
@@ -349,12 +358,19 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
                         className="mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--void-2)] px-2.5 py-2 text-sm capitalize text-[var(--bone)] outline-none focus:border-[var(--accent)]/50 sm:w-48"
                       >
                         {PLANS.map((p) => (
-                          <option key={p} value={p} className="capitalize">{p}</option>
+                          <option key={p} value={p} className="capitalize">
+                            {p} — ${PLAN_PRICES[p]}/mo
+                          </option>
                         ))}
                       </select>
                     </div>
 
-                    <GrantAccessPanel userId={a.user_id} onDone={(patch) => patchAccount(a.user_id, patch)} />
+                    <GrantAccessPanel
+                      key={a.plan}
+                      userId={a.user_id}
+                      defaultAmount={String(PLAN_PRICES[a.plan] ?? "")}
+                      onDone={(patch) => patchAccount(a.user_id, patch)}
+                    />
 
                     {hasActiveAccess && (
                       <button
