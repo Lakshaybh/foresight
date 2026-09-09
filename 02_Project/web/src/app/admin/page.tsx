@@ -43,7 +43,9 @@ export default async function AdminPage() {
   const [{ data: accounts }, { data: profiles }, { data: payments }, impact] = await Promise.all([
     supabase
       .from("user_account")
-      .select("user_id, email, role, status, created_at, terms_accepted_at, access_expires_at, admin_notes, plan")
+      .select(
+        "user_id, email, role, status, created_at, terms_accepted_at, access_expires_at, admin_notes, plan, requested_plan"
+      )
       .order("created_at", { ascending: false }),
     supabase
       .from("business_profile")

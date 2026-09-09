@@ -1,18 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { AuthShell } from "@/components/auth-shell";
 import { DarkSignOutButton } from "@/components/dark-sign-out-button";
-
-const ADMIN_EMAIL = "lakshaymsharma@gmail.com";
+import { ReaccessRequestForm } from "@/components/reaccess-request-form";
 
 export default async function AccessExpiredPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const subject = "Foresight — renewing my access";
-  const body = `Hi,\n\nMy access has expired and I'd like to renew my subscription.\n\nAccount email: ${user?.email ?? ""}\n`;
-  const mailtoHref = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return (
     <AuthShell maxWidth="max-w-sm">
@@ -34,15 +29,8 @@ export default async function AccessExpiredPage() {
             </p>
           </div>
 
-          <div className="space-y-2.5">
-            <a
-              href={mailtoHref}
-              className="block w-full rounded-lg bg-[var(--accent)] py-2.5 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110"
-            >
-              Email for a new subscription
-            </a>
-            <DarkSignOutButton />
-          </div>
+          <ReaccessRequestForm userEmail={user?.email} />
+          <DarkSignOutButton />
         </div>
       </div>
     </AuthShell>

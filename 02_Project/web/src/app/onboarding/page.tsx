@@ -19,6 +19,12 @@ const BUSINESS_TYPES = [
 
 const TEAM_SIZES = ["1-5", "6-20", "21-50", "51+"];
 
+const PLANS = [
+  { value: "starter", label: "Starter", price: "$20/mo" },
+  { value: "growth", label: "Growth", price: "$100/mo" },
+  { value: "enterprise", label: "Enterprise", price: "$200/mo" },
+];
+
 function BuildingMark() {
   return (
     <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
@@ -75,12 +81,13 @@ export default function OnboardingPage() {
   const [primaryChallenge, setPrimaryChallenge] = useState("");
   const [country, setCountry] = useState("");
   const [website, setWebsite] = useState("");
+  const [plan, setPlan] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
-  const requiredFields = [businessName, businessType, whatYouDo, teamSize, primaryChallenge];
+  const requiredFields = [businessName, businessType, whatYouDo, teamSize, primaryChallenge, plan];
   const filledCount = requiredFields.filter(Boolean).length;
   const canSubmit = filledCount === requiredFields.length;
 
@@ -99,8 +106,15 @@ export default function OnboardingPage() {
       p_website: website || null,
     });
 
-    setSubmitting(false);
     if (error) {
+      setSubmitting(false);
+      setError("Something went wrong. Please try again.");
+      return;
+    }
+
+    const { error: planError } = await supabase.rpc("submit_requested_plan", { p_plan: plan });
+    setSubmitting(false);
+    if (planError) {
       setError("Something went wrong. Please try again.");
       return;
     }
@@ -233,6 +247,29 @@ export default function OnboardingPage() {
                 />
               </Field>
             </div>
+
+            <Field label="Which plan would you like?" htmlFor="plan">
+              <div data-reveal className="grid gap-2.5 sm:grid-cols-3">
+                {PLANS.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setPlan(p.value)}
+                    className={`rounded-xl border px-3.5 py-3 text-left transition-all duration-300 ${
+                      plan === p.value
+                        ? "border-[var(--accent)] bg-[var(--accent)]/10"
+                        : "border-[var(--line)] hover:border-[var(--bone)]/30"
+                    }`}
+                  >
+                    <p className="text-sm font-medium text-[var(--bone)]">{p.label}</p>
+                    <p className="text-xs text-[var(--bone-dim)]">{p.price}</p>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-[var(--bone-dim)]">
+                This tells us what to set you up with — the admin confirms it when granting access.
+              </p>
+            </Field>
 
             {error && <p className="text-sm text-[var(--orange)]">{error}</p>}
 

@@ -49,6 +49,43 @@ def _compose_body(action_type: str, entity_name: str, evidence: dict) -> str:
     return f"{entity_name} usually delivers in {baseline} days, but the last delivery took {observed} days."
 
 
+PLAN_LABELS = {"starter": "Starter ($20/mo)", "growth": "Growth ($100/mo)", "enterprise": "Enterprise ($200/mo)"}
+
+
+def send_reaccess_request(user_email: str, plan: str) -> bool:
+    """A lapsed user asking, from /access-expired, to be re-approved on a
+    given plan starting next month. Same best-effort SMTP pattern as
+    send_urgent_alert — if it fails, the request just doesn't reach the
+    admin's inbox; nothing else in the product depends on it."""
+    if not (settings.smtp_host and settings.smtp_user and settings.smtp_password and settings.smtp_sender_email):
+        logger.warning("Re-access request not sent (SMTP not configured): %s / %s", user_email, plan)
+        return False
+
+    plan_label = PLAN_LABELS.get(plan, plan)
+    subject = f"Re-access request: {user_email}"
+    body = (
+        f"{user_email}'s access has expired and they're asking to be re-approved.\n\n"
+        f"Requested plan (starting next month): {plan_label}\n\n"
+        "Review and grant access from the admin command center."
+    )
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = settings.smtp_sender_email
+    msg["To"] = settings.admin_notify_email
+    msg["Reply-To"] = user_email
+
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_password)
+            server.sendmail(settings.smtp_sender_email, [settings.admin_notify_email], msg.as_string())
+        return True
+    except Exception:
+        logger.exception("Failed to send re-access request email for %s", user_email)
+        return False
+
+
 def send_urgent_alert(to_email: str, action_type: str, entity_name: str, confidence: float, evidence: dict) -> bool:
     """Returns True if actually sent. Silently (but loudly in logs) skips
     if SMTP isn't configured — never raises, since a failed notification

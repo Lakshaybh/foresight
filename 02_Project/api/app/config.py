@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     smtp_user: str | None = None
     smtp_password: str | None = None
     smtp_sender_email: str | None = None
+    # Platform operator's own inbox — where a lapsed-access renewal request
+    # from /access-expired gets sent. Not a secret, but kept in config
+    # rather than hardcoded in the router so it can change without a
+    # redeploy touching application logic.
+    admin_notify_email: str = "lakshaymsharma@gmail.com"
 
 
 settings = Settings()

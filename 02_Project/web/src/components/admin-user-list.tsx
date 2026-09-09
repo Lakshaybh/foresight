@@ -25,6 +25,7 @@ type Account = {
   access_expires_at: string | null;
   admin_notes: string | null;
   plan: string;
+  requested_plan: string | null;
   profile: BusinessProfile | null;
 };
 
@@ -272,6 +273,11 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
                         {a.plan} · ${PLAN_PRICES[a.plan] ?? "?"}/mo
                       </span>
                     )}
+                    {a.requested_plan && a.requested_plan !== a.plan && (
+                      <span className="rounded-full bg-[var(--amber)]/15 px-2 py-0.5 text-[10px] font-medium capitalize tracking-wide text-[var(--amber)]">
+                        wants {a.requested_plan}
+                      </span>
+                    )}
                     {a.role === "admin" && (
                       <span className="rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--accent)]">
                         admin
@@ -363,12 +369,21 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
                           </option>
                         ))}
                       </select>
+                      {a.requested_plan && a.requested_plan !== a.plan && (
+                        <button
+                          disabled={busyId === a.user_id}
+                          onClick={() => setPlan(a.user_id, a.requested_plan!)}
+                          className="mt-1.5 text-xs font-medium text-[var(--amber)] underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Apply requested plan ({a.requested_plan})
+                        </button>
+                      )}
                     </div>
 
                     <GrantAccessPanel
                       key={a.plan}
                       userId={a.user_id}
-                      defaultAmount={String(PLAN_PRICES[a.plan] ?? "")}
+                      defaultAmount={String(PLAN_PRICES[a.requested_plan ?? a.plan] ?? "")}
                       onDone={(patch) => patchAccount(a.user_id, patch)}
                     />
 
