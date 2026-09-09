@@ -15,14 +15,12 @@ class Settings(BaseSettings):
     # by design. Never hardcode this; it lives only in the local .env file.
     database_url: str | None = None
 
-    # Brevo SMTP — same credentials already used for Supabase Auth emails,
-    # reused here for urgent-signal alerts. All optional: if unset, alerts
-    # are skipped with a log line rather than the app crashing or pretending
-    # to send something it didn't.
-    smtp_host: str | None = None
-    smtp_port: int = 587
-    smtp_user: str | None = None
-    smtp_password: str | None = None
+    # Brevo transactional email, sent via their HTTPS REST API rather than
+    # SMTP — Render blocks outbound SMTP ports at the network level, so a
+    # raw smtplib connection just times out there. Both optional: if unset,
+    # sends are skipped with a log line rather than the app crashing or
+    # pretending to send something it didn't.
+    brevo_api_key: str | None = None
     smtp_sender_email: str | None = None
     # Platform operator's own inbox — where a lapsed-access renewal request
     # from /access-expired gets sent. Not a secret, but kept in config
