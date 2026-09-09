@@ -22,9 +22,7 @@ export default async function AdminPaymentsPage() {
   const emailByUserId = new Map((accounts ?? []).map((a) => [a.user_id, a.email]));
 
   return (
-    <AppShell title="Command Center" email={user.email}>
-      <AdminNav />
-
+    <AppShell title="Command Center" email={user.email} nav={<AdminNav />}>
       <p className="mb-4 text-sm text-[var(--bone-dim)]">
         Every manually recorded payment, newest first — the audit trail behind each access grant.
       </p>

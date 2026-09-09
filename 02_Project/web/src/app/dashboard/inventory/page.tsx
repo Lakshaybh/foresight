@@ -81,8 +81,7 @@ function InventoryPageInner() {
   }, [asTenant]);
 
   return (
-    <AppShell title="Inventory" email={email}>
-      <DashboardNav />
+    <AppShell title="Inventory" email={email} nav={<DashboardNav />}>
       <ImpersonationBanner email={tenantEmail} />
 
       <p className="mb-6 text-sm text-[var(--bone-dim)]">

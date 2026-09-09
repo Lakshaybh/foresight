@@ -21,8 +21,7 @@ export default async function DashboardPage({
   const { as_tenant, tenant_email } = await searchParams;
 
   return (
-    <AppShell title="Dashboard" email={user.email}>
-      <DashboardNav />
+    <AppShell title="Dashboard" email={user.email} nav={<DashboardNav />}>
       <ImpersonationBanner email={tenant_email ?? null} />
       {!as_tenant && (
         <div className="-mt-6 mb-8 flex justify-end">

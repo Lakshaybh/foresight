@@ -31,8 +31,7 @@ function SalesPageInner() {
   }, [asTenant]);
 
   return (
-    <AppShell title="Sales" email={email}>
-      <DashboardNav />
+    <AppShell title="Sales" email={email} nav={<DashboardNav />}>
       <ImpersonationBanner email={tenantEmail} />
 
       <p className="mb-6 text-sm text-[var(--bone-dim)]">

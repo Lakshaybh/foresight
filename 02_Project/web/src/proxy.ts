@@ -5,6 +5,29 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = new Set(["/", "/login", "/auth/callback"]);
 
 export async function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  // The homepage never gates on auth state either way, so there's nothing
+  // for this proxy to decide here — skip it outright rather than paying a
+  // real network round trip to Supabase's Auth server on every visit.
+  if (path === "/") {
+    return NextResponse.next({ request });
+  }
+
+  // A Supabase session cookie is only ever set after a real sign-in, so its
+  // absence means "definitely not authenticated" with zero ambiguity — no
+  // need to ask Supabase to confirm that over the network. This is the
+  // common case for anonymous visitors (e.g. clicking "Request access"),
+  // and skipping the round trip here is what actually fixes the multi-second
+  // lag on every navigation, not a build/npm issue.
+  const hasAuthCookie = request.cookies.getAll().some((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
+  if (!hasAuthCookie) {
+    if (!PUBLIC_PATHS.has(path)) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -29,8 +52,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const path = request.nextUrl.pathname;
 
   // Setting a new password is orthogonal to onboarding status — a recovery
   // link creates a session before terms/approval have anything to say about

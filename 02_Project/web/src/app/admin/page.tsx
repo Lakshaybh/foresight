@@ -77,9 +77,7 @@ export default async function AdminPage() {
       : [...revenueByCurrency.entries()].map(([c, amt]) => `${c} ${amt.toLocaleString()}`).join(" · ");
 
   return (
-    <AppShell title="Command Center" email={user.email}>
-      <AdminNav />
-
+    <AppShell title="Command Center" email={user.email} nav={<AdminNav />}>
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <AdminStatCard label="Total accounts" value={accounts?.length ?? 0} />
         <AdminStatCard label="Pending review" value={pendingCount} />

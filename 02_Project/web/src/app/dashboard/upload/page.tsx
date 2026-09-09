@@ -156,8 +156,7 @@ export default function UploadPage() {
   }
 
   return (
-    <AppShell title="Connect your data" email={email}>
-      <DashboardNav />
+    <AppShell title="Connect your data" email={email} nav={<DashboardNav />}>
       <p className="-mt-6 mb-8 text-sm text-[var(--bone-dim)]">
         Upload your suppliers/orders first — sales and inventory rows both
         reference products that need to already exist from that file.

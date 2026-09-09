@@ -10,6 +10,7 @@ import { HeroHeadline } from "@/components/marketing/hero-headline";
 import { ScrambleLine } from "@/components/marketing/scramble-heading";
 import { DataConverge } from "@/components/marketing/data-converge";
 import { StatCounter } from "@/components/marketing/stat-counter";
+import { HeroDashboard } from "@/components/marketing/hero-dashboard";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
@@ -69,35 +70,45 @@ export default function HomePage() {
           <AbstractBackground />
           <SiteNav />
 
-          {/* Hero */}
-          <section className="relative z-10 px-4 pt-44 pb-24 sm:pt-56 sm:pb-32">
-            <div className="mx-auto max-w-4xl text-center">
-              <ScrambleLine
-                text="DETECT · EXPLAIN · RECOMMEND · TRACK"
-                className="text-[11px] tracking-[0.3em] text-[var(--accent)]"
-              />
-              <HeroHeadline className="mt-7 text-6xl font-semibold leading-[0.98] tracking-tight text-balance text-[var(--bone)] sm:text-8xl">
-                Know what happens{" "}
-                <span style={{ color: "var(--accent)" }}>next.</span>
-              </HeroHeadline>
-              <p
-                data-reveal
-                className="mx-auto mt-8 max-w-xl text-balance text-lg text-[var(--bone-dim)]"
-              >
-                Right now, you probably find out about a stockout the day a
-                customer asks where their order is. By then it&apos;s already
-                cost you a sale. We watch your suppliers and your stock every
-                day, so you find out weeks earlier — while there&apos;s still
-                time to do something about it.
-              </p>
-              <div data-reveal className="mt-9 flex justify-center">
-                <CtaButton href="/login" size="lg">
-                  Request access
-                </CtaButton>
+          {/* Hero — text pinned to the left like a drawn-back curtain,
+              animated dashboard preview on the right. Sized to the first
+              viewport (min-h-screen, vertically centered) so the CTA is
+              always visible on load, not just on scroll. */}
+          <section className="relative z-10 flex min-h-screen items-center px-4 py-28 sm:px-10">
+            <div className="mx-auto grid w-full max-w-6xl items-center gap-10 sm:grid-cols-2">
+              <div className="max-w-md">
+                <ScrambleLine
+                  text="DETECT · EXPLAIN · RECOMMEND · TRACK"
+                  className="text-[10px] tracking-[0.3em] text-[var(--accent)]"
+                />
+                <HeroHeadline className="mt-5 text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-[var(--bone)] sm:text-5xl">
+                  Know what happens{" "}
+                  <span style={{ color: "var(--accent)" }}>next.</span>
+                </HeroHeadline>
+                <p
+                  data-reveal
+                  className="mt-6 text-balance text-base text-[var(--bone-dim)]"
+                >
+                  Right now, you probably find out about a stockout the day a
+                  customer asks where their order is. By then it&apos;s
+                  already cost you a sale. We watch your suppliers and your
+                  stock every day, so you find out weeks earlier — while
+                  there&apos;s still time to do something about it.
+                </p>
+                <div data-reveal className="mt-8 flex">
+                  <CtaButton href="/login" size="lg">
+                    Request access
+                  </CtaButton>
+                </div>
               </div>
-            </div>
 
-            <RevealSection className="mx-auto mt-20 max-w-4xl" y={48}>
+              <HeroDashboard />
+            </div>
+          </section>
+
+          {/* Product preview */}
+          <section className="relative z-10 px-4 pb-24 sm:pb-32">
+            <RevealSection className="mx-auto max-w-4xl" y={48}>
               <div data-reveal>
                 <ProductPreview />
                 <p className="mt-4 text-center text-xs text-[var(--bone-dim)]">

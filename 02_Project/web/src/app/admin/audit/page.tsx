@@ -31,9 +31,7 @@ export default async function AdminAuditPage() {
   const emailByUserId = new Map((accounts ?? []).map((a) => [a.user_id, a.email]));
 
   return (
-    <AppShell title="Command Center" email={user.email}>
-      <AdminNav />
-
+    <AppShell title="Command Center" email={user.email} nav={<AdminNav />}>
       <p className="mb-4 text-sm text-[var(--bone-dim)]">
         Every admin action, newest first — most recent 200.
       </p>
