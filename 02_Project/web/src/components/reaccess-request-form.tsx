@@ -27,11 +27,11 @@ export function ReaccessRequestForm({ userEmail }: { userEmail: string | undefin
     if (!plan) return;
     setStatus("sending");
     try {
-      await apiFetch("/access/request-reaccess", {
+      const res = await apiFetch<{ sent: boolean }>("/access/request-reaccess", {
         method: "POST",
         body: JSON.stringify({ plan }),
       });
-      setStatus("sent");
+      setStatus(res.sent ? "sent" : "error");
     } catch (e) {
       setStatus(e instanceof ApiNotConfiguredError ? "error" : "error");
     }

@@ -13,8 +13,8 @@ export function PaymentLinkRequestButton() {
   async function send() {
     setStatus("sending");
     try {
-      await apiFetch("/access/request-payment-link", { method: "POST" });
-      setStatus("sent");
+      const res = await apiFetch<{ sent: boolean }>("/access/request-payment-link", { method: "POST" });
+      setStatus(res.sent ? "sent" : "error");
     } catch {
       setStatus("error");
     }
@@ -40,7 +40,11 @@ export function PaymentLinkRequestButton() {
       </button>
       {status === "error" && (
         <p className="mt-1.5 text-center text-xs text-[var(--orange)]">
-          Couldn&apos;t send that right now — please try again shortly.
+          Couldn&apos;t send that automatically — email{" "}
+          <a href="mailto:lakshaymsharma@gmail.com" className="underline underline-offset-2">
+            lakshaymsharma@gmail.com
+          </a>{" "}
+          directly instead.
         </p>
       )}
     </div>
