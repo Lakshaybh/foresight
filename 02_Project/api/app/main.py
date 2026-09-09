@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import admin_stats, business_data, decisions, forecast, ingest, signals
+from app.routers import admin_stats, auth_check, business_data, decisions, forecast, ingest, signals
 
 app = FastAPI(title="Foresight Intelligence API", version="0.1.0")
 
@@ -22,6 +22,7 @@ app.include_router(decisions.router)
 app.include_router(ingest.router)
 app.include_router(business_data.router)
 app.include_router(admin_stats.router)
+app.include_router(auth_check.router)
 
 
 @app.get("/health")
