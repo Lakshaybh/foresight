@@ -15,10 +15,12 @@ secret, so nothing sensitive needs to live in this service's own config.
 from __future__ import annotations
 
 import jwt
+import psycopg
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import settings
+from app.db import get_connection
 
 _bearer = HTTPBearer(auto_error=False)
 _jwks_client = jwt.PyJWKClient(f"{settings.supabase_url}/auth/v1/.well-known/jwks.json")
@@ -46,3 +48,39 @@ def get_current_user_id(
     if not user_id:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token missing subject")
     return user_id
+
+
+def require_admin(
+    user_id: str = Depends(get_current_user_id),
+    conn: psycopg.Connection = Depends(get_connection),
+) -> str:
+    """Same identity check as get_current_user_id, plus a real role lookup —
+    used for platform-operator endpoints (impact stats, viewing another
+    tenant's data). A valid token alone is never enough for these; the
+    caller's own user_account.role must actually say admin."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT role FROM user_account WHERE user_id = %s", (user_id,))
+        row = cur.fetchone()
+    if not row or row[0] != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required")
+    return user_id
+
+
+def get_effective_tenant_id(
+    as_tenant: str | None = None,
+    user_id: str = Depends(get_current_user_id),
+    conn: psycopg.Connection = Depends(get_connection),
+) -> str:
+    """For read endpoints only: an admin may pass ?as_tenant=<id> to view
+    another tenant's data (support/debugging) — validated server-side
+    against their real role, never trusted from the query alone. Anyone
+    else always gets their own id regardless of what they pass."""
+    if as_tenant is None or as_tenant == user_id:
+        return user_id
+
+    with conn.cursor() as cur:
+        cur.execute("SELECT role FROM user_account WHERE user_id = %s", (user_id,))
+        row = cur.fetchone()
+    if not row or row[0] != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an admin can view another tenant's data")
+    return as_tenant

@@ -5,7 +5,7 @@ import psycopg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.auth import get_current_user_id
+from app.auth import get_current_user_id, get_effective_tenant_id
 from app.db import get_connection
 from app.decision.engine import persist_decisions, run_decision_engine
 from app.notify import URGENT_CONFIDENCE_THRESHOLD, send_urgent_alert
@@ -85,13 +85,13 @@ _SELECT_COLUMNS = """
 
 @router.get("", response_model=list[Decision])
 def list_decisions(
-    user_id: str = Depends(get_current_user_id),
+    tenant_id: str = Depends(get_effective_tenant_id),
     conn: psycopg.Connection = Depends(get_connection),
 ) -> list[Decision]:
     with conn.cursor() as cur:
         cur.execute(
             f"SELECT {_SELECT_COLUMNS} FROM decision WHERE tenant_id = %s ORDER BY created_at DESC",
-            (user_id,),
+            (tenant_id,),
         )
         rows = cur.fetchall()
 

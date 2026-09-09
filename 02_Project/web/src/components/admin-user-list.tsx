@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 type BusinessProfile = {
@@ -23,8 +24,11 @@ type Account = {
   terms_accepted_at: string | null;
   access_expires_at: string | null;
   admin_notes: string | null;
+  plan: string;
   profile: BusinessProfile | null;
 };
+
+const PLANS = ["trial", "starter", "growth", "enterprise"] as const;
 
 const BUSINESS_TYPE_LABELS: Record<string, string> = {
   ecommerce: "Small e-commerce",
@@ -193,6 +197,13 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
     if (!error) patchAccount(userId, { admin_notes: notes || null });
   }
 
+  async function setPlan(userId: string, plan: string) {
+    setBusyId(userId);
+    const { error } = await supabase.rpc("admin_set_plan", { p_user_id: userId, p_plan: plan });
+    setBusyId(null);
+    if (!error) patchAccount(userId, { plan });
+  }
+
   const counts = useMemo(
     () => ({
       pending: accounts.filter((a) => a.status === "pending").length,
@@ -247,6 +258,11 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
                   <div className="flex items-center gap-2.5">
                     <p className="text-sm font-medium text-[var(--bone)]">{a.profile?.business_name ?? a.email}</p>
                     <StatusBadge status={a.status} />
+                    {a.role !== "admin" && (
+                      <span className="rounded-full bg-[var(--bone)]/10 px-2 py-0.5 text-[10px] font-medium capitalize tracking-wide text-[var(--bone-dim)]">
+                        {a.plan}
+                      </span>
+                    )}
                     {a.role === "admin" && (
                       <span className="rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--accent)]">
                         admin
@@ -273,12 +289,20 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
                       </>
                     )}
                     {a.role !== "admin" && (
-                      <button
-                        onClick={() => setOpenPanel(openPanel === a.user_id ? null : a.user_id)}
-                        className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05]"
-                      >
-                        {openPanel === a.user_id ? "Close" : "Manage access"}
-                      </button>
+                      <>
+                        <Link
+                          href={`/dashboard?as_tenant=${a.user_id}&tenant_email=${encodeURIComponent(a.email)}`}
+                          className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05]"
+                        >
+                          View dashboard
+                        </Link>
+                        <button
+                          onClick={() => setOpenPanel(openPanel === a.user_id ? null : a.user_id)}
+                          className="rounded-lg border border-[var(--line)] px-3 py-1.5 text-xs font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05]"
+                        >
+                          {openPanel === a.user_id ? "Close" : "Manage access"}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -316,6 +340,20 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
 
                 {openPanel === a.user_id && (
                   <>
+                    <div className="mt-4">
+                      <label className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">Plan</label>
+                      <select
+                        value={a.plan}
+                        disabled={busyId === a.user_id}
+                        onChange={(e) => setPlan(a.user_id, e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-[var(--line)] bg-[var(--void-2)] px-2.5 py-2 text-sm capitalize text-[var(--bone)] outline-none focus:border-[var(--accent)]/50 sm:w-48"
+                      >
+                        {PLANS.map((p) => (
+                          <option key={p} value={p} className="capitalize">{p}</option>
+                        ))}
+                      </select>
+                    </div>
+
                     <GrantAccessPanel userId={a.user_id} onDone={(patch) => patchAccount(a.user_id, patch)} />
 
                     {hasActiveAccess && (

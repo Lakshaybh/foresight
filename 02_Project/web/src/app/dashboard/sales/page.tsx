@@ -1,15 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DashboardNav } from "@/components/dashboard-nav";
-import { apiFetch } from "@/lib/api";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
+import { apiFetch, withTenant } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 
 type ProductSales = { product_name: string; units_sold: number; revenue: number };
 type SalesSummary = { period_days: number; total_revenue: number; total_units: number; top_products: ProductSales[] };
 
-export default function SalesPage() {
+function SalesPageInner() {
+  const searchParams = useSearchParams();
+  const asTenant = searchParams.get("as_tenant");
+  const tenantEmail = searchParams.get("tenant_email");
+
   const [email, setEmail] = useState<string | undefined>();
   const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,14 +25,15 @@ export default function SalesPage() {
       .auth.getUser()
       .then(({ data }) => setEmail(data.user?.email));
 
-    apiFetch<SalesSummary>("/sales/summary?days=30")
+    apiFetch<SalesSummary>(withTenant("/sales/summary?days=30", asTenant))
       .then(setSummary)
       .catch((e) => setError((e as Error).message));
-  }, []);
+  }, [asTenant]);
 
   return (
     <AppShell title="Sales" email={email}>
       <DashboardNav />
+      <ImpersonationBanner email={tenantEmail} />
 
       <p className="mb-6 text-sm text-[var(--bone-dim)]">
         How much you&apos;ve sold in the last 30 days.
@@ -83,5 +90,13 @@ export default function SalesPage() {
         </>
       )}
     </AppShell>
+  );
+}
+
+export default function SalesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-[var(--bone-dim)]">Loading…</div>}>
+      <SalesPageInner />
+    </Suspense>
   );
 }

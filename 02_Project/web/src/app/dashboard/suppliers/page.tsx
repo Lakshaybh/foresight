@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { TrendChart } from "@/components/trend-chart";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, withTenant } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 
 type Supplier = {
@@ -38,12 +40,14 @@ function ReliabilityBadge({ supplier }: { supplier: Supplier }) {
   );
 }
 
-function DeliveryHistory({ supplierId }: { supplierId: string }) {
+function DeliveryHistory({ supplierId, asTenant }: { supplierId: string; asTenant: string | null }) {
   const [points, setPoints] = useState<DeliveryPoint[] | null>(null);
 
   useEffect(() => {
-    apiFetch<DeliveryPoint[]>(`/suppliers/${supplierId}/deliveries`).then(setPoints).catch(() => setPoints([]));
-  }, [supplierId]);
+    apiFetch<DeliveryPoint[]>(withTenant(`/suppliers/${supplierId}/deliveries`, asTenant))
+      .then(setPoints)
+      .catch(() => setPoints([]));
+  }, [supplierId, asTenant]);
 
   if (points === null) return <p className="text-xs text-[var(--bone-dim)]">Loading trend…</p>;
 
@@ -61,7 +65,11 @@ function DeliveryHistory({ supplierId }: { supplierId: string }) {
   );
 }
 
-export default function SuppliersPage() {
+function SuppliersPageInner() {
+  const searchParams = useSearchParams();
+  const asTenant = searchParams.get("as_tenant");
+  const tenantEmail = searchParams.get("tenant_email");
+
   const [email, setEmail] = useState<string | undefined>();
   const [suppliers, setSuppliers] = useState<Supplier[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,14 +80,15 @@ export default function SuppliersPage() {
       .auth.getUser()
       .then(({ data }) => setEmail(data.user?.email));
 
-    apiFetch<Supplier[]>("/suppliers")
+    apiFetch<Supplier[]>(withTenant("/suppliers", asTenant))
       .then(setSuppliers)
       .catch((e) => setError((e as Error).message));
-  }, []);
+  }, [asTenant]);
 
   return (
     <AppShell title="Suppliers" email={email}>
       <DashboardNav />
+      <ImpersonationBanner email={tenantEmail} />
 
       <p className="mb-6 text-sm text-[var(--bone-dim)]">
         Who you buy from, and how reliable each one has actually been.
@@ -136,11 +145,19 @@ export default function SuppliersPage() {
                   {expanded === s.supplier_id ? "Hide delivery trend" : "Show delivery trend"}
                 </button>
               )}
-              {expanded === s.supplier_id && <DeliveryHistory supplierId={s.supplier_id} />}
+              {expanded === s.supplier_id && <DeliveryHistory supplierId={s.supplier_id} asTenant={asTenant} />}
             </div>
           ))}
         </div>
       )}
     </AppShell>
+  );
+}
+
+export default function SuppliersPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-[var(--bone-dim)]">Loading…</div>}>
+      <SuppliersPageInner />
+    </Suspense>
   );
 }

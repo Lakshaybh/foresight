@@ -21,6 +21,14 @@ async function authHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${session.access_token}` };
 }
 
+// Admin support/debugging: appends ?as_tenant=<id> so a read endpoint
+// returns another tenant's data — enforced server-side (require the
+// caller to actually be an admin), this is just the URL plumbing.
+export function withTenant(path: string, asTenant: string | null): string {
+  if (!asTenant) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}as_tenant=${asTenant}`;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!API_BASE_URL) throw new ApiNotConfiguredError();
 

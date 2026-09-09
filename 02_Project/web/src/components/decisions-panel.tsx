@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, withTenant } from "@/lib/api";
 import { DecisionEvidence } from "@/components/decision-evidence";
 
 type Decision = {
@@ -106,13 +106,14 @@ function EmptyState() {
   );
 }
 
-export function DecisionsPanel() {
+export function DecisionsPanel({ asTenant = null }: { asTenant?: string | null }) {
+  const readOnly = Boolean(asTenant);
   const [decisions, setDecisions] = useState<Decision[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [outcomeDrafts, setOutcomeDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    apiFetch<Decision[]>("/decisions")
+    apiFetch<Decision[]>(withTenant("/decisions", asTenant))
       .then(setDecisions)
       .catch((e) => {
         // A customer shouldn't see an internal "API not deployed" error —
@@ -120,7 +121,7 @@ export function DecisionsPanel() {
         console.error("Failed to load decisions:", e);
         setDecisions([]);
       });
-  }, []);
+  }, [asTenant]);
 
   async function review(id: string, status: "approved" | "rejected" | "snoozed") {
     setBusyId(id);
@@ -183,7 +184,7 @@ export function DecisionsPanel() {
                 </div>
               </div>
             </div>
-            {d.status === "open" && (
+            {d.status === "open" && !readOnly && (
               <div className="flex shrink-0 gap-2">
                 <button
                   disabled={busyId === d.decision_id}
@@ -221,6 +222,8 @@ export function DecisionsPanel() {
                   <span className="text-[var(--bone-dim)]">Outcome: </span>
                   {d.outcome}
                 </p>
+              ) : readOnly ? (
+                <p className="text-xs text-[var(--bone-dim)]">No outcome recorded yet.</p>
               ) : (
                 <div className="flex gap-2">
                   <input

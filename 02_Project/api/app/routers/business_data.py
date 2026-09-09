@@ -12,7 +12,7 @@ import psycopg
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.auth import get_current_user_id
+from app.auth import get_effective_tenant_id
 from app.db import get_connection
 
 router = APIRouter(tags=["business-data"])
@@ -65,7 +65,7 @@ class DeliveryPointOut(BaseModel):
 
 @router.get("/suppliers", response_model=list[SupplierOut])
 def list_suppliers(
-    user_id: str = Depends(get_current_user_id),
+    tenant_id: str = Depends(get_effective_tenant_id),
     conn: psycopg.Connection = Depends(get_connection),
 ) -> list[SupplierOut]:
     with conn.cursor() as cur:
@@ -80,7 +80,7 @@ def list_suppliers(
             GROUP BY s.supplier_id, s.name
             ORDER BY s.name
             """,
-            (user_id, user_id),
+            (tenant_id, tenant_id),
         )
         suppliers = cur.fetchall()
 
@@ -96,7 +96,7 @@ def list_suppliers(
             JOIN product p ON p.product_id = po.product_id
             WHERE po.tenant_id = %s
             """,
-            (user_id,),
+            (tenant_id,),
         )
         categories_by_supplier: dict[str, set[str]] = defaultdict(set)
         for supplier_id, category_id in cur.fetchall():
@@ -111,7 +111,7 @@ def list_suppliers(
                   AND tenant_id = %s
                 ORDER BY detected_at DESC LIMIT 1
                 """,
-                (supplier_id, user_id),
+                (supplier_id, tenant_id),
             )
             row = cur.fetchone()
             if row:
@@ -157,7 +157,7 @@ def list_suppliers(
 @router.get("/suppliers/{supplier_id}/deliveries", response_model=list[DeliveryPointOut])
 def supplier_delivery_history(
     supplier_id: str,
-    user_id: str = Depends(get_current_user_id),
+    tenant_id: str = Depends(get_effective_tenant_id),
     conn: psycopg.Connection = Depends(get_connection),
 ) -> list[DeliveryPointOut]:
     """Delay per order over time — the real trend a lead-time drift signal
@@ -170,7 +170,7 @@ def supplier_delivery_history(
             WHERE supplier_id = %s AND tenant_id = %s AND actual_delivery_date IS NOT NULL
             ORDER BY order_date
             """,
-            (supplier_id, user_id),
+            (supplier_id, tenant_id),
         )
         return [DeliveryPointOut(order_date=d.isoformat(), delay_days=float(delay)) for d, delay in cur.fetchall()]
 
@@ -178,7 +178,7 @@ def supplier_delivery_history(
 @router.get("/sales/summary", response_model=SalesSummaryOut)
 def sales_summary(
     days: int = 30,
-    user_id: str = Depends(get_current_user_id),
+    tenant_id: str = Depends(get_effective_tenant_id),
     conn: psycopg.Connection = Depends(get_connection),
 ) -> SalesSummaryOut:
     with conn.cursor() as cur:
@@ -189,7 +189,7 @@ def sales_summary(
             JOIN sales_order so ON so.order_id = oi.order_id
             WHERE oi.tenant_id = %s AND so.order_date >= CURRENT_DATE - (%s || ' days')::interval
             """,
-            (user_id, days),
+            (tenant_id, days),
         )
         total_revenue, total_units = cur.fetchone()
 
@@ -204,7 +204,7 @@ def sales_summary(
             ORDER BY SUM(oi.quantity * oi.unit_price) DESC
             LIMIT 5
             """,
-            (user_id, days),
+            (tenant_id, days),
         )
         top_products = [
             ProductSalesOut(product_name=name, units_sold=int(units), revenue=round(float(revenue), 2))
@@ -221,7 +221,7 @@ def sales_summary(
 
 @router.get("/inventory", response_model=list[InventoryItemOut])
 def list_inventory(
-    user_id: str = Depends(get_current_user_id),
+    tenant_id: str = Depends(get_effective_tenant_id),
     conn: psycopg.Connection = Depends(get_connection),
 ) -> list[InventoryItemOut]:
     with conn.cursor() as cur:
@@ -236,7 +236,7 @@ def list_inventory(
             WHERE inv.tenant_id = %s
             ORDER BY inv.product_id, inv.warehouse_id, inv.snapshot_date DESC
             """,
-            (user_id,),
+            (tenant_id,),
         )
         rows = cur.fetchall()
 
@@ -256,7 +256,7 @@ def list_inventory(
 @router.get("/inventory/{product_id}/history", response_model=list[StockPointOut])
 def inventory_history(
     product_id: str,
-    user_id: str = Depends(get_current_user_id),
+    tenant_id: str = Depends(get_effective_tenant_id),
     conn: psycopg.Connection = Depends(get_connection),
 ) -> list[StockPointOut]:
     with conn.cursor() as cur:
@@ -268,6 +268,6 @@ def inventory_history(
             GROUP BY snapshot_date
             ORDER BY snapshot_date
             """,
-            (product_id, user_id),
+            (product_id, tenant_id),
         )
         return [StockPointOut(snapshot_date=d.isoformat(), stock_on_hand=int(stock)) for d, stock in cur.fetchall()]

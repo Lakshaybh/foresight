@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DashboardNav } from "@/components/dashboard-nav";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { TrendChart } from "@/components/trend-chart";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, withTenant } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 
 type InventoryItem = {
@@ -35,12 +37,14 @@ function StockBadge({ item }: { item: InventoryItem }) {
   );
 }
 
-function StockHistory({ productId }: { productId: string }) {
+function StockHistory({ productId, asTenant }: { productId: string; asTenant: string | null }) {
   const [points, setPoints] = useState<StockPoint[] | null>(null);
 
   useEffect(() => {
-    apiFetch<StockPoint[]>(`/inventory/${productId}/history`).then(setPoints).catch(() => setPoints([]));
-  }, [productId]);
+    apiFetch<StockPoint[]>(withTenant(`/inventory/${productId}/history`, asTenant))
+      .then(setPoints)
+      .catch(() => setPoints([]));
+  }, [productId, asTenant]);
 
   if (points === null) return <p className="p-3 text-xs text-[var(--bone-dim)]">Loading trend…</p>;
 
@@ -56,7 +60,11 @@ function StockHistory({ productId }: { productId: string }) {
   );
 }
 
-export default function InventoryPage() {
+function InventoryPageInner() {
+  const searchParams = useSearchParams();
+  const asTenant = searchParams.get("as_tenant");
+  const tenantEmail = searchParams.get("tenant_email");
+
   const [email, setEmail] = useState<string | undefined>();
   const [items, setItems] = useState<InventoryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,14 +75,15 @@ export default function InventoryPage() {
       .auth.getUser()
       .then(({ data }) => setEmail(data.user?.email));
 
-    apiFetch<InventoryItem[]>("/inventory")
+    apiFetch<InventoryItem[]>(withTenant("/inventory", asTenant))
       .then(setItems)
       .catch((e) => setError((e as Error).message));
-  }, []);
+  }, [asTenant]);
 
   return (
     <AppShell title="Inventory" email={email}>
       <DashboardNav />
+      <ImpersonationBanner email={tenantEmail} />
 
       <p className="mb-6 text-sm text-[var(--bone-dim)]">
         Current stock levels — this is the data your early-warning signals are computed from. Click a row to see its trend.
@@ -120,7 +129,7 @@ export default function InventoryPage() {
                   {expanded === item.product_id && (
                     <tr>
                       <td colSpan={6} className="p-0">
-                        <StockHistory productId={item.product_id} />
+                        <StockHistory productId={item.product_id} asTenant={asTenant} />
                       </td>
                     </tr>
                   )}
@@ -131,5 +140,13 @@ export default function InventoryPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+export default function InventoryPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-[var(--bone-dim)]">Loading…</div>}>
+      <InventoryPageInner />
+    </Suspense>
   );
 }
