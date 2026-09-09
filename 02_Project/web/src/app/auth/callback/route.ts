@@ -17,8 +17,13 @@ export async function GET(request: Request) {
       if (type === "recovery") {
         return NextResponse.redirect(`${origin}/auth/reset-password`);
       }
-      // proxy.ts will forward on to /terms or /pending as needed once this
-      // step is done — this is just the correct first stop for anyone new.
+      // Terms are now agreed to via the checkbox on /login, before this
+      // sign-in was even initiated — record that acceptance the moment we
+      // have a real authenticated user to attach it to, rather than making
+      // them tick the same box again as a separate onboarding step.
+      await supabase.rpc("accept_terms");
+      // proxy.ts will forward on to /pending as needed once this step is
+      // done — this is just the correct first stop for anyone new.
       return NextResponse.redirect(`${origin}/onboarding`);
     }
   }

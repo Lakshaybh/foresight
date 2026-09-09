@@ -5,7 +5,7 @@
 // only improves perceived speed; it doesn't make the backend faster.
 export function LoadingSkeleton({ withNav = true }: { withNav?: boolean }) {
   return (
-    <div className="marketing-dark min-h-screen bg-[var(--void)] font-[family-name:var(--font-display)]">
+    <div className="theme-cream min-h-screen bg-[var(--void)] font-[family-name:var(--font-display)]">
       <header className="border-b border-[var(--line)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2">

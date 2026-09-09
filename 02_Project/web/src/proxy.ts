@@ -99,8 +99,11 @@ export async function proxy(request: NextRequest) {
   const isExpired =
     !isApprovedAdmin && Boolean(account?.access_expires_at) && new Date(account!.access_expires_at!) < new Date();
 
-  // Where someone who isn't fully onboarded/approved yet belongs, in order.
-  const nextStep = !hasProfile ? "/onboarding" : !termsAccepted ? "/terms" : "/pending";
+  // Where someone who isn't fully onboarded/approved yet belongs. Terms are
+  // accepted at login (see auth/callback), not as a separate onboarding
+  // step — termsAccepted is still checked in isFullyApproved above as a
+  // real safety net, it just never routes anyone here directly anymore.
+  const nextStep = !hasProfile ? "/onboarding" : "/pending";
 
   if (path === "/login") {
     return NextResponse.redirect(new URL(isExpired ? "/access-expired" : isFullyApproved ? homePath : nextStep, request.url));
@@ -121,7 +124,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Fully onboarded, approved, and not expired from here on.
-  if (path === "/onboarding" || path === "/terms" || path === "/pending" || path === "/access-expired") {
+  if (path === "/onboarding" || path === "/pending" || path === "/access-expired") {
     return NextResponse.redirect(new URL(homePath, request.url));
   }
 

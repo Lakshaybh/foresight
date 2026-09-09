@@ -2,9 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
 
 export function StatCounter({
   value,
@@ -27,20 +24,32 @@ export function StatCounter({
       return;
     }
 
-    const counter = { n: 0 };
-    const ctx = gsap.context(() => {
-      gsap.to(counter, {
-        n: value,
-        duration: 1.8,
-        ease: "power2.out",
-        scrollTrigger: { trigger: el, start: "top 85%", once: true },
-        onUpdate: () => {
-          el.textContent = Math.round(counter.n).toLocaleString() + suffix;
-        },
-      });
-    });
+    let tween: gsap.core.Tween | null = null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const counter = { n: 0 };
+            tween = gsap.to(counter, {
+              n: value,
+              duration: 1.8,
+              ease: "power2.out",
+              onUpdate: () => {
+                el.textContent = Math.round(counter.n).toLocaleString() + suffix;
+              },
+            });
+            observer.disconnect();
+          }
+        }
+      },
+      { threshold: 0, rootMargin: "0px 0px -15% 0px" }
+    );
+    observer.observe(el);
 
-    return () => ctx.revert();
+    return () => {
+      observer.disconnect();
+      tween?.kill();
+    };
   }, [value, suffix]);
 
   return (

@@ -17,7 +17,7 @@ export function SiteNav() {
   return (
     <>
       <nav className="fixed inset-x-0 top-6 z-50 flex justify-center px-4">
-        <div className="flex w-full max-w-2xl items-center justify-between gap-4 rounded-full border border-[var(--line)] bg-[var(--void-2)]/70 px-4 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.2),0_20px_50px_-24px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+        <div className="flex w-full max-w-4xl items-center justify-between gap-4 rounded-full border border-[var(--line)] bg-[var(--void-2)]/70 px-5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.2),0_20px_50px_-24px_rgba(0,0,0,0.6)] backdrop-blur-xl">
           <Link href="/" className="flex items-center gap-2 pl-1 font-mono text-sm font-medium tracking-tight text-[var(--bone)]">
             <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
             Foresight
@@ -36,6 +36,12 @@ export function SiteNav() {
           </div>
 
           <div className="hidden items-center gap-2 sm:flex">
+            <a
+              href="#pricing"
+              className="rounded-full border border-[var(--teal)]/40 px-3 py-1.5 text-sm font-medium text-[var(--teal)] transition-colors duration-300 hover:bg-[var(--teal)]/10"
+            >
+              Pricing
+            </a>
             <Link
               href="/login"
               className="rounded-full px-3 py-1.5 text-sm text-[var(--bone-dim)] transition-colors duration-300 hover:text-[var(--bone)]"
@@ -74,7 +80,7 @@ export function SiteNav() {
           open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         )}
       >
-        {[...LINKS, { href: "/login", label: "Sign in" }].map((link, i) => (
+        {[...LINKS, { href: "#pricing", label: "Pricing" }, { href: "/login", label: "Sign in" }].map((link, i) => (
           <a
             key={link.href}
             href={link.href}

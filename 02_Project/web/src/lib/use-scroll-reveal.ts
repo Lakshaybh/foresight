@@ -1,53 +1,67 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
 
 type RevealOptions = {
   y?: number;
   duration?: number;
   stagger?: number;
-  start?: string;
 };
 
+// IntersectionObserver-driven fade/rise-in. Deliberately not gsap
+// ScrollTrigger: ScrollTrigger calculates each trigger's start position
+// once on mount, and on a page with web fonts and images still loading,
+// later sections can settle taller than they were when the trigger was
+// calculated — which silently strands elements at opacity 0 forever (their
+// trigger point ends up already "passed"). An observer re-evaluates
+// against real, current layout every time, so it can't drift like that.
 export function useScrollReveal<T extends HTMLElement>(options: RevealOptions = {}) {
   const ref = useRef<T | null>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const targets = el.querySelectorAll("[data-reveal]");
+    const targets = Array.from(el.querySelectorAll<HTMLElement>("[data-reveal]"));
     if (targets.length === 0) return;
 
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReduced) {
-      gsap.set(targets, { opacity: 1, y: 0 });
+      targets.forEach((t) => {
+        t.style.opacity = "1";
+        t.style.transform = "none";
+      });
       return;
     }
 
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        targets,
-        { opacity: 0, y: options.y ?? 32 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: options.duration ?? 1,
-          stagger: options.stagger ?? 0.08,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: el,
-            start: options.start ?? "top 75%",
-          },
-        }
-      );
-    }, el);
+    const y = options.y ?? 32;
+    const duration = options.duration ?? 0.9;
+    const stagger = options.stagger ?? 0.08;
 
-    return () => ctx.revert();
-  }, [options.y, options.duration, options.stagger, options.start]);
+    targets.forEach((t, i) => {
+      const x = Number(t.dataset.revealX ?? 0);
+      t.style.opacity = "0";
+      t.style.transform = `translate(${x}px, ${y}px)`;
+      t.style.transition = `opacity ${duration}s cubic-bezier(0.16,1,0.3,1) ${i * stagger}s, transform ${duration}s cubic-bezier(0.16,1,0.3,1) ${i * stagger}s`;
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            targets.forEach((t) => {
+              t.style.opacity = "1";
+              t.style.transform = "translate(0, 0)";
+            });
+            observer.disconnect();
+          }
+        }
+      },
+      { threshold: 0, rootMargin: "0px 0px -15% 0px" }
+    );
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, [options.y, options.duration, options.stagger]);
 
   return ref;
 }

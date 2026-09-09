@@ -29,6 +29,23 @@ export function withTenant(path: string, asTenant: string | null): string {
   return `${path}${path.includes("?") ? "&" : "?"}as_tenant=${asTenant}`;
 }
 
+// For the handful of calls that happen before there's a session at all
+// (checking whether an email has an account, pre-login) — no auth header,
+// since there's nothing to attach yet.
+export async function apiFetchPublic<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!API_BASE_URL) throw new ApiNotConfiguredError();
+
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`API ${res.status}: ${body || res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!API_BASE_URL) throw new ApiNotConfiguredError();
 

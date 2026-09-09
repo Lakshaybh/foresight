@@ -129,40 +129,75 @@
   }
 }
 
-/* Marketing homepage: a distinct dark "command center" visual system,
-   deliberately scoped to .marketing-dark only — the authenticated app
-   (login/terms/pending/admin/dashboard) keeps the light theme above.
+/* Foresight's one product-wide visual system — warm cream, near-black ink,
+   a single deep-indigo brand accent. Scoped to .theme-cream, applied to
+   every real screen (marketing homepage, login, dashboard, admin) so the
+   whole product is one system, not a light app bolted onto a dark site.
 
-   Two separate color roles, kept deliberately distinct:
-   --accent / --accent-2 (pink/purple) is the BRAND accent — nav, CTAs,
-   headline emphasis, background shapes, product-panel chrome.
-   --teal / --amber / --orange is the SEVERITY language used only where the
-   page is actually showing risk level (signal dots, mesh, dashboard output
-   colors) — tied to the decision catalog (normal/monitor/escalate), not
-   decoration, and left alone even as the brand color changes around it. */
-.marketing-dark {
+   Variable names (--void/--bone/etc.) are historical from an earlier dark
+   theme and kept as-is rather than churned through every component that
+   references them — only the values changed. --void/--void-2 are now the
+   page and card-surface tones (still darkest-to-lightest in that order,
+   just inverted in absolute lightness), --bone/--bone-dim are ink tones.
+
+   --accent is the ONE brand color (deep indigo) — used sparingly: primary
+   CTA, key numbers, a single emphasized word. --teal/--amber/--orange are
+   the SEVERITY language for actual risk status (decision catalog states),
+   never used as decoration — kept as real, distinct hues (forest green /
+   warm amber / rust) so they read as status, not as more brand color. */
+.theme-cream {
   --font-mono: var(--font-plex-mono);
-  --void: #0a0713;
-  --void-2: #140b22;
-  --bone: #f3eef8;
-  --bone-dim: #a89bb8;
-  --line: rgba(243, 238, 248, 0.1);
+  --void: #c9a0dc;
+  --void-2: #fffdf8;
+  --bone: #1c1a17;
+  --bone-dim: #6b6459;
+  --line: rgba(28, 26, 23, 0.1);
 
-  --accent: #e8479e;
-  --accent-2: #8b5cf6;
-  --accent-dim: rgba(232, 71, 158, 0.35);
-  --accent-wash: rgba(232, 71, 158, 0.08);
+  --accent: #332c7c;
+  --accent-2: #4c4499;
+  --accent-dim: rgba(51, 44, 124, 0.28);
+  --accent-wash: rgba(51, 44, 124, 0.06);
 
-  --teal: #5ed8c4;
-  --teal-dim: rgba(94, 216, 196, 0.35);
-  --teal-wash: rgba(94, 216, 196, 0.08);
-  --amber: #f4b942;
-  --orange: #f2793c;
+  --teal: #2f6f4e;
+  --teal-dim: rgba(47, 111, 78, 0.3);
+  --teal-wash: rgba(47, 111, 78, 0.08);
+  --amber: #a3720f;
+  --orange: #a8481f;
 
-  /* No background here on purpose: a plain in-flow box's own background
-     paints ABOVE a fixed, negative-z-index descendant in CSS stacking
-     order, regardless of DOM nesting — so this opaque color was silently
-     covering AbstractBackground the entire time. AbstractBackground paints
-     its own var(--void) base itself; this class only sets text color. */
   color: var(--bone);
+  background: var(--void);
+}
+
+/* One-time page-load entrance, homepage only — pure CSS (no JS animation
+   library, no scroll listener), so it costs nothing at runtime beyond a
+   single GPU-composited transition on first paint. Deliberately separate
+   from the scroll-triggered [data-reveal] system: this plays once, on
+   load, regardless of scroll position. */
+.page-intro {
+  animation: page-intro 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.page-intro-delay-1 {
+  animation-delay: 0.08s;
+}
+.page-intro-delay-2 {
+  animation-delay: 0.16s;
+}
+@keyframes page-intro {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-intro,
+  .page-intro-delay-1,
+  .page-intro-delay-2 {
+    animation: none;
+  }
 }

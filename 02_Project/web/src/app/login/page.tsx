@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { apiFetchPublic } from "@/lib/api";
 import { AbstractBackground } from "@/components/marketing/abstract-background";
+import { HeroScene } from "@/components/marketing/hero-scene";
 import { RevealSection } from "@/components/marketing/reveal-section";
 import { LoginInfographic } from "@/components/marketing/login-infographic";
+import { TermsModal } from "@/components/terms-modal";
+import { IconInput } from "@/components/icon-input";
 
 function GoogleMark() {
   return (
@@ -20,7 +25,7 @@ function GoogleMark() {
 
 function LinkedInMark() {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="h-[17px] w-[17px] text-[var(--bone)]">
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-[17px] w-[17px]">
       <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.86 0-2.14 1.45-2.14 2.94v5.66H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z" />
     </svg>
   );
@@ -28,9 +33,28 @@ function LinkedInMark() {
 
 function MailMark() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-[17px] w-[17px] text-[var(--bone)]">
+    <svg viewBox="0 0 24 24" fill="none" className="h-[17px] w-[17px]">
       <path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h15A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z" stroke="currentColor" strokeWidth="1.4" />
       <path d="M4 6.5l8 6.5 8-6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function LockMark() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+      <rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="15" r="1.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ShieldMark() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+      <path d="M12 3.5 19 6.3v5.4c0 4.4-3 7.9-7 9.3-4-1.4-7-4.9-7-9.3V6.3l7-2.8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M9 12.3l2 2 4-4.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -41,19 +65,25 @@ function AuthButton({
   icon,
   type = "button",
   disabled,
+  primary = false,
 }: {
   onClick?: () => void;
   children: React.ReactNode;
   icon: React.ReactNode;
   type?: "button" | "submit";
   disabled?: boolean;
+  primary?: boolean;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--bone)]/[0.03] py-3 text-sm font-medium text-[var(--bone)] transition-all duration-300 hover:bg-[var(--bone)]/[0.07] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1"
+      className={
+        primary
+          ? "flex w-full items-center justify-center gap-3 rounded-xl bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          : "flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--line)] bg-transparent py-3 text-sm font-medium text-[var(--bone)] transition-all duration-300 hover:bg-[var(--bone)]/[0.05] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1"
+      }
     >
       {icon}
       {children}
@@ -61,12 +91,226 @@ function AuthButton({
   );
 }
 
-const STEPS = ["Sign in", "Connect your data", "Get your first signal within days"];
+const submitClass =
+  "w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60";
+
+type EmailStep = "closed" | "email" | "otp" | "set-password" | "password";
+
+// The email path branches on whether this address has signed in before:
+// a brand-new email gets a one-time code sent (proves they own the inbox)
+// and is asked to set a password right after; an email that already has a
+// password just signs in with it. Detecting which is which happens
+// server-side (see /auth/check-email) — the client never gets to assume.
+function EmailAuthFlow({ agreed }: { agreed: boolean }) {
+  const [step, setStep] = useState<EmailStep>("closed");
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const supabase = createClient();
+  const router = useRouter();
+
+  function reset() {
+    setStep("email");
+    setOtp("");
+    setPassword("");
+    setConfirmPassword("");
+    setError(null);
+  }
+
+  async function submitEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetchPublic<{ exists: boolean; has_password: boolean }>("/auth/check-email", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+
+      if (res.exists && res.has_password) {
+        setStep("password");
+      } else {
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+        if (error) throw error;
+        setStep("otp");
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
+    setLoading(false);
+    if (error) {
+      setError("That code didn't work — check it and try again.");
+      return;
+    }
+    setStep("set-password");
+  }
+
+  async function submitNewPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 8) {
+      setError("Use at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Those passwords don't match.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      setLoading(false);
+      setError("Something went wrong. Please try again.");
+      return;
+    }
+    // Consent was already given via the checkbox before this flow started —
+    // this is the first point there's a real authenticated user to attach
+    // that acceptance to.
+    await supabase.rpc("accept_terms");
+    router.push("/onboarding");
+    router.refresh();
+  }
+
+  async function submitPasswordSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setLoading(false);
+      setError("Incorrect email or password.");
+      return;
+    }
+    router.push("/onboarding");
+    router.refresh();
+  }
+
+  if (step === "closed") {
+    return (
+      <AuthButton icon={<MailMark />} onClick={() => setStep("email")} disabled={!agreed}>
+        Email
+      </AuthButton>
+    );
+  }
+
+  return (
+    <div className="mt-2.5 basis-full space-y-2.5">
+      {step === "email" && (
+        <form onSubmit={submitEmail} className="space-y-2.5">
+          <IconInput
+            icon={<MailMark />}
+            type="email"
+            required
+            autoFocus
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+          />
+          <button type="submit" disabled={loading || !agreed} className={submitClass}>
+            {loading ? "Checking…" : "Continue"}
+          </button>
+        </form>
+      )}
+
+      {step === "otp" && (
+        <form onSubmit={verifyOtp} className="space-y-2.5">
+          <p className="text-xs text-[var(--bone-dim)]">
+            First time here — enter the code we sent to <span className="text-[var(--bone)]">{email}</span>.
+          </p>
+          <IconInput
+            icon={<ShieldMark />}
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            required
+            autoFocus
+            // Not hardcoded to 6 — this Supabase project's configured OTP
+            // length can differ (it's an 8-digit code here), and capping
+            // input length here made it impossible to type the real code.
+            maxLength={10}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+            placeholder="Code from your email"
+            className="text-center font-mono text-lg tracking-[0.3em]"
+          />
+          <button type="submit" disabled={loading || otp.length < 4} className={submitClass}>
+            {loading ? "Verifying…" : "Verify code"}
+          </button>
+        </form>
+      )}
+
+      {step === "set-password" && (
+        <form onSubmit={submitNewPassword} className="space-y-2.5">
+          <p className="text-xs text-[var(--bone-dim)]">
+            Verified. Set a password for next time you sign in.
+          </p>
+          <IconInput
+            icon={<LockMark />}
+            type="password"
+            required
+            autoFocus
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="New password"
+          />
+          <IconInput
+            icon={<LockMark />}
+            type="password"
+            required
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm password"
+          />
+          <button type="submit" disabled={loading} className={submitClass}>
+            {loading ? "Saving…" : "Set password & continue"}
+          </button>
+        </form>
+      )}
+
+      {step === "password" && (
+        <form onSubmit={submitPasswordSignIn} className="space-y-2.5">
+          <p className="text-xs text-[var(--bone-dim)]">
+            Welcome back — sign in as <span className="text-[var(--bone)]">{email}</span>.
+          </p>
+          <IconInput
+            icon={<LockMark />}
+            type="password"
+            required
+            autoFocus
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+          />
+          <button type="submit" disabled={loading} className={submitClass}>
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+      )}
+
+      {error && <p className="text-center text-xs text-[var(--orange)]">{error}</p>}
+
+      <button type="button" onClick={reset} className="w-full text-center text-xs text-[var(--bone-dim)] underline underline-offset-2 hover:text-[var(--bone)]">
+        Use a different email
+      </button>
+    </div>
+  );
+}
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [showEmailForm, setShowEmailForm] = useState(false);
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [agreed, setAgreed] = useState(false);
 
   const supabase = createClient();
 
@@ -77,65 +321,38 @@ export default function LoginPage() {
     });
   }
 
-  async function sendMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus("sending");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
-    setStatus(error ? "error" : "sent");
-  }
-
   return (
-    <div className="marketing-dark relative flex h-[100dvh] flex-col overflow-hidden font-[family-name:var(--font-display)]">
+    <div className="theme-cream relative flex h-[100dvh] flex-col overflow-hidden font-[family-name:var(--font-display)]">
       <AbstractBackground />
 
       <Link
         href="/"
-        className="absolute left-6 top-6 z-30 flex items-center gap-2 font-mono text-sm font-medium tracking-tight text-[var(--bone)]"
+        className="page-intro absolute left-6 top-6 z-30 flex items-center gap-2 font-mono text-sm font-medium tracking-tight text-[var(--bone)]"
       >
         <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
         Foresight
       </Link>
 
-      {/* Top half — brand / pitch content, freed up by moving the form down */}
-      <div className="relative z-10 flex flex-1 items-center justify-center overflow-hidden px-6 pb-56 pt-20 sm:pb-48">
-        <RevealSection className="max-w-lg text-center" stagger={0.07}>
-          <div data-reveal className="font-mono text-[11px] tracking-[0.3em] text-[var(--accent)]">
-            DETECT · EXPLAIN · RECOMMEND · TRACK
-          </div>
-          {/* Before / after infographic — icon-only, animated, no text */}
-          <div data-reveal>
+      {/* Top — one headline, the animated before/after infographic, and the
+          same warehouse/truck/shop scene from the homepage filling the
+          background so this screen doesn't read as bare purple space. */}
+      <div className="relative z-10 flex flex-1 items-center justify-center overflow-hidden px-6 pb-64 pt-20 sm:pb-56">
+        <HeroScene />
+        <RevealSection className="max-w-md text-center" stagger={0.08}>
+          <h1
+            data-reveal
+            className="text-3xl font-semibold leading-[1.05] tracking-tight text-balance text-[var(--bone)] sm:text-4xl"
+          >
+            Know what happens{" "}
+            <span style={{ color: "var(--accent)" }}>next.</span>
+          </h1>
+          <p data-reveal className="mx-auto mt-3 max-w-sm text-balance text-sm text-[var(--bone-dim)]">
+            A daily watch on your stock and suppliers that catches a stockout
+            weeks before it happens.
+          </p>
+          <div data-reveal className="mt-6">
             <LoginInfographic />
           </div>
-
-          {/* Segment reminder — context for anyone landing here directly */}
-          <p
-            data-reveal
-            className="mx-auto mt-4 inline-block max-w-md text-balance rounded-full border border-[var(--line)] bg-[var(--bone)]/[0.03] px-4 py-1.5 text-xs text-[var(--bone-dim)]"
-          >
-            Built for small distributors, manufacturers, and retailers who
-            can&apos;t justify a full-time analyst.
-          </p>
-
-          {/* What happens after you sign in */}
-          <div data-reveal className="mt-6 flex items-center justify-center gap-2 sm:gap-3">
-            {STEPS.map((step, i) => (
-              <div key={step} className="flex items-center gap-2 sm:gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]/15 font-mono text-[10px] text-[var(--accent)]">
-                    {i + 1}
-                  </span>
-                  <span className="whitespace-nowrap text-xs text-[var(--bone-dim)]">{step}</span>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <span className="text-[var(--bone-dim)]/40">→</span>
-                )}
-              </div>
-            ))}
-          </div>
-
         </RevealSection>
       </div>
 
@@ -143,67 +360,54 @@ export default function LoginPage() {
       <RevealSection className="fixed inset-x-0 bottom-0 z-20 flex justify-center px-0" y={32}>
         <div
           data-reveal
-          className="max-h-[70dvh] w-full max-w-3xl overflow-y-auto rounded-t-[2rem] border border-b-0 border-[var(--line)] bg-[var(--void-2)]/90 px-6 pb-8 pt-7 shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:px-10"
+          className="max-h-[65dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-b-0 border-[var(--accent)]/15 bg-[var(--void-2)]/95 px-6 pb-6 pt-5 shadow-[0_-30px_70px_-20px_rgba(51,44,124,0.25)] backdrop-blur-xl sm:px-9"
         >
-          <div className="mx-auto mb-6 h-1 w-10 rounded-full bg-[var(--bone)]/15" />
-          <div className="mx-auto max-w-md">
-            <p className="text-center text-sm text-[var(--bone-dim)]">
-              New accounts are reviewed before access is granted.
-            </p>
+          <p className="text-center text-sm text-[var(--bone-dim)]">
+            New accounts are reviewed before access is granted.
+          </p>
 
-            <div className="mt-5 space-y-2.5 sm:flex sm:gap-2.5 sm:space-y-0">
-              <AuthButton icon={<GoogleMark />} onClick={() => signInWithProvider("google")}>
-                Google
-              </AuthButton>
-              <AuthButton icon={<LinkedInMark />} onClick={() => signInWithProvider("linkedin_oidc")}>
+          <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-xl border border-[var(--line)] p-2.5 text-sm text-[var(--bone)] transition-colors has-[:checked]:border-[var(--accent)]/50 has-[:checked]:bg-[var(--accent-wash)]">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[var(--accent)]"
+            />
+            <span>
+              I agree to the{" "}
+              <TermsModal
+                trigger={(open) => (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      open();
+                    }}
+                    className="underline underline-offset-2 hover:text-[var(--accent)]"
+                  >
+                    Terms &amp; Conditions
+                  </button>
+                )}
+              />
+              .
+            </span>
+          </label>
+
+          <div className="mt-3 space-y-2">
+            <AuthButton icon={<GoogleMark />} onClick={() => signInWithProvider("google")} disabled={!agreed} primary>
+              Continue with Google
+            </AuthButton>
+            <div className="flex flex-wrap gap-2.5">
+              <AuthButton icon={<LinkedInMark />} onClick={() => signInWithProvider("linkedin_oidc")} disabled={!agreed}>
                 LinkedIn
               </AuthButton>
-              {!showEmailForm && (
-                <AuthButton icon={<MailMark />} onClick={() => setShowEmailForm(true)}>
-                  Email
-                </AuthButton>
-              )}
+              <EmailAuthFlow agreed={agreed} />
             </div>
-
-            {showEmailForm && (
-              <form onSubmit={sendMagicLink} className="mt-3 space-y-2.5">
-                <input
-                  type="email"
-                  required
-                  autoFocus
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  className="w-full rounded-xl border border-[var(--line)] bg-[var(--bone)]/[0.03] px-4 py-3 text-sm text-[var(--bone)] outline-none placeholder:text-[var(--bone-dim)] focus:border-[var(--accent)]/50 focus:ring-2 focus:ring-[var(--accent)]/20"
-                />
-                <button
-                  type="submit"
-                  disabled={status === "sending"}
-                  className="w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {status === "sending" ? "Sending…" : "Send magic link"}
-                </button>
-                {status === "sent" && (
-                  <p className="text-center text-xs text-[var(--teal)]">
-                    Check your email for a sign-in link.
-                  </p>
-                )}
-                {status === "error" && (
-                  <p className="text-center text-xs text-[var(--orange)]">
-                    Something went wrong. Please try again.
-                  </p>
-                )}
-              </form>
-            )}
-
-            <p className="mt-5 text-center text-[11px] leading-relaxed text-[var(--bone-dim)]">
-              By continuing you agree to our{" "}
-              <Link href="/terms" className="text-[var(--bone)] underline underline-offset-2 hover:text-[var(--accent)]">
-                Terms
-              </Link>
-              . You&apos;ll be notified once your account is reviewed.
-            </p>
           </div>
+
+          <p className="mt-3 text-center text-[11px] leading-relaxed text-[var(--bone-dim)]">
+            You&apos;ll be notified once your account is reviewed.
+          </p>
         </div>
       </RevealSection>
     </div>

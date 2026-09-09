@@ -21,7 +21,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="marketing-dark min-h-screen bg-[var(--void)] font-[family-name:var(--font-display)]">
+    <div className="theme-cream min-h-screen bg-[var(--void)] font-[family-name:var(--font-display)]">
       <header className="border-b border-[var(--line)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 font-mono text-sm font-medium tracking-tight text-[var(--bone)]">

@@ -1,32 +1,29 @@
 import { cn } from "cn";
 
+// A plain bordered, elevated card — no colored glow. A soft neutral shadow
+// (not a brand-color halo) is the only lift; `emphasis` swaps the border
+// for the brand accent on the one or two cards per page that should read
+// as the important one, instead of every "glow" card competing at once.
 export function BezelCard({
   children,
   className,
   innerClassName,
-  glow = false,
+  emphasis = false,
 }: {
   children: React.ReactNode;
   className?: string;
   innerClassName?: string;
-  glow?: boolean;
+  emphasis?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "rounded-[1.75rem] bg-[var(--bone)]/[0.04] p-1.5 ring-1 ring-[var(--line)]",
-        glow && "shadow-[0_0_60px_-15px_var(--accent-dim)]",
+        "rounded-2xl bg-[var(--void-2)] ring-1 shadow-[0_1px_2px_rgba(28,26,23,0.04),0_16px_32px_-24px_rgba(28,26,23,0.18)]",
+        emphasis ? "ring-[var(--accent)]/25" : "ring-[var(--line)]",
         className
       )}
     >
-      <div
-        className={cn(
-          "h-full rounded-[calc(1.75rem-0.375rem)] bg-[var(--void-2)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-[var(--line)]",
-          innerClassName
-        )}
-      >
-        {children}
-      </div>
+      <div className={cn("h-full", innerClassName)}>{children}</div>
     </div>
   );
 }
