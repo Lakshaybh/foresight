@@ -68,6 +68,7 @@ async def ingest_suppliers(
 
     with conn.cursor() as cur:
         for i, row in enumerate(rows, start=2):  # row 1 is the header
+            cur.execute("SAVEPOINT row")
             try:
                 category_id = get_or_create_category(cur, user_id, row["category_name"].strip())
                 product_id = get_or_create_product(
@@ -90,8 +91,10 @@ async def ingest_suppliers(
                         _parse_date(actual) if actual else None,
                     ),
                 )
+                cur.execute("RELEASE SAVEPOINT row")
                 inserted += 1
-            except (KeyError, ValueError) as e:
+            except (KeyError, ValueError, psycopg.Error) as e:
+                cur.execute("ROLLBACK TO SAVEPOINT row")
                 errors.append(RowError(row=i, message=str(e)))
 
         conn.commit()
@@ -115,6 +118,7 @@ async def ingest_sales(
         customer_id = get_or_create_default_customer(cur, user_id)
 
         for i, row in enumerate(rows, start=2):
+            cur.execute("SAVEPOINT row")
             try:
                 cur.execute(
                     "SELECT product_id FROM product WHERE tenant_id = %s AND name = %s",
@@ -141,8 +145,10 @@ async def ingest_sales(
                     """,
                     (user_id, order_id, product_id, int(row["quantity"]), float(row["unit_price"])),
                 )
+                cur.execute("RELEASE SAVEPOINT row")
                 inserted += 1
-            except (KeyError, ValueError) as e:
+            except (KeyError, ValueError, psycopg.Error) as e:
+                cur.execute("ROLLBACK TO SAVEPOINT row")
                 errors.append(RowError(row=i, message=str(e)))
 
         conn.commit()
@@ -164,6 +170,7 @@ async def ingest_inventory(
 
     with conn.cursor() as cur:
         for i, row in enumerate(rows, start=2):
+            cur.execute("SAVEPOINT row")
             try:
                 # Products referenced here are expected to already exist
                 # from a suppliers upload — inventory alone has no price/
@@ -195,8 +202,10 @@ async def ingest_inventory(
                         int(row["stock_on_hand"]), int(row["safety_stock_level"]), float(row["avg_daily_demand"]),
                     ),
                 )
+                cur.execute("RELEASE SAVEPOINT row")
                 inserted += 1
-            except (KeyError, ValueError) as e:
+            except (KeyError, ValueError, psycopg.Error) as e:
+                cur.execute("ROLLBACK TO SAVEPOINT row")
                 errors.append(RowError(row=i, message=str(e)))
 
         conn.commit()
