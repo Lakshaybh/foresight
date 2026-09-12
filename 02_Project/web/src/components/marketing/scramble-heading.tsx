@@ -16,7 +16,7 @@ export function ScrambleLine({
 }) {
   const ref = useScrambleText(text, { delay, duration });
   return (
-    <p ref={ref} className={cn("font-mono", className)}>
+    <p ref={ref} className={cn(className)}>
       {text}
     </p>
   );

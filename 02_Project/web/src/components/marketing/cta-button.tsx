@@ -25,11 +25,11 @@ export function CtaButton({
     <Link
       href={href}
       className={cn(
-        "group/cta inline-flex items-center gap-3 rounded-full font-medium",
+        "group/cta inline-flex items-center gap-3 rounded-[6px] font-medium",
         "transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97]",
         variant === "primary"
           ? "bg-[var(--accent)] text-[var(--void)] shadow-[0_0_40px_-10px_var(--accent-dim)] hover:shadow-[0_0_50px_-8px_var(--accent-dim)] hover:brightness-110"
-          : "border border-[var(--line)] bg-[var(--bone)]/[0.03] text-[var(--bone)] hover:bg-[var(--bone)]/[0.06]",
+          : "border border-[var(--line)] bg-[var(--void)] text-[var(--bone)] hover:bg-[var(--bone)]/[0.06]",
         sizes[size],
         className
       )}

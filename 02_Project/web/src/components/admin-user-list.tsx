@@ -118,7 +118,7 @@ function GrantAccessPanel({
   }
 
   return (
-    <div className="mt-4 space-y-3 rounded-xl border border-[var(--line)] bg-[var(--bone)]/[0.02] p-4">
+    <div className="mt-4 space-y-3 rounded-[8px] border border-[var(--line)] bg-[var(--bone)]/[0.02] p-4">
       <div className="grid gap-3 sm:grid-cols-4">
         <div className="sm:col-span-2">
           <label className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">Duration</label>
@@ -263,7 +263,7 @@ export function AdminUserList({ initialAccounts }: { initialAccounts: Account[] 
           {filtered.map((a) => {
             const hasActiveAccess = a.access_expires_at && new Date(a.access_expires_at) > new Date();
             return (
-              <div key={a.user_id} className="rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-5">
+              <div key={a.user_id} className="rounded-[8px] border border-[var(--line)] bg-[var(--void-2)] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <p className="text-sm font-medium text-[var(--bone)]">{a.profile?.business_name ?? a.email}</p>

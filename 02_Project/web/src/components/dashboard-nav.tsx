@@ -45,7 +45,7 @@ function DashboardNavInner() {
   }, [asTenant]);
 
   return (
-    <nav className="flex flex-col gap-2.5">
+    <nav className="flex flex-col gap-0.5 border-l border-[var(--line)]">
       {LINKS.map((l) => {
         const active = l.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(l.href);
         const count = l.entityType ? counts?.[l.entityType] : undefined;
@@ -53,17 +53,17 @@ function DashboardNavInner() {
           <Link
             key={l.href}
             href={`${l.href}${suffix}`}
-            className={`flex items-center justify-between gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
+            className={`-ml-px flex items-center justify-between gap-2 border-l-2 px-4 py-2.5 text-sm font-medium transition-colors duration-300 ${
               active
-                ? "border-transparent bg-[var(--accent)] text-[var(--void)] shadow-[0_0_24px_-6px_var(--accent-dim)]"
-                : "border-[var(--line)] text-[var(--bone-dim)] hover:border-[var(--accent)]/40 hover:text-[var(--bone)]"
+                ? "border-[var(--accent)] text-[var(--bone-strong)]"
+                : "border-transparent text-[var(--bone-dim)] hover:text-[var(--bone)]"
             }`}
           >
-            <span className="flex-1 text-center">{l.label}</span>
+            <span>{l.label}</span>
             {!!count && (
               <span
                 className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                  active ? "bg-[var(--void-2)]/25 text-[var(--void)]" : "bg-[var(--orange)]/15 text-[var(--orange)]"
+                  active ? "bg-[var(--accent)]/15 text-[var(--accent)]" : "bg-[var(--orange)]/15 text-[var(--orange)]"
                 }`}
               >
                 {count}
@@ -81,7 +81,7 @@ function DashboardNavInner() {
 // remember to add its own.
 export function DashboardNav() {
   return (
-    <Suspense fallback={<div className="flex flex-col gap-2.5"><div className="h-10 rounded-full border border-[var(--line)] bg-[var(--bone)]/[0.02]" /></div>}>
+    <Suspense fallback={<div className="flex flex-col gap-2.5"><div className="h-10 rounded-[6px] border border-[var(--line)] bg-[var(--bone)]/[0.02]" /></div>}>
       <DashboardNavInner />
     </Suspense>
   );

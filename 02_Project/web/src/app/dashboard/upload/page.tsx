@@ -2,11 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppShell } from "@/components/app-shell";
-import { DashboardNav } from "@/components/dashboard-nav";
+import { PageHeader } from "@/components/page-header";
 import { apiFetch, apiUpload } from "@/lib/api";
-import { createClient } from "@/lib/supabase/client";
-import { useEffect } from "react";
 
 type IngestResult = { inserted: number; errors: { row: number; message: string }[] };
 
@@ -125,17 +122,10 @@ function AnalysisLoader({ stage }: { stage: number }) {
 }
 
 export default function UploadPage() {
-  const [email, setEmail] = useState<string | undefined>();
   const [running, setRunning] = useState(false);
   const [stage, setStage] = useState(0);
   const [runMessage, setRunMessage] = useState<string | null>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    createClient()
-      .auth.getUser()
-      .then(({ data }) => setEmail(data.user?.email));
-  }, []);
 
   async function runAnalysis() {
     setRunning(true);
@@ -156,8 +146,9 @@ export default function UploadPage() {
   }
 
   return (
-    <AppShell title="Connect your data" email={email} nav={<DashboardNav />}>
-      <p className="-mt-6 mb-8 text-sm text-[var(--bone-dim)]">
+    <>
+      <PageHeader title="Connect your data" />
+      <p className="-mt-4 mb-8 text-sm text-[var(--bone-dim)]">
         Upload your suppliers/orders first — sales and inventory rows both
         reference products that need to already exist from that file.
       </p>
@@ -202,6 +193,6 @@ export default function UploadPage() {
         {running && <AnalysisLoader stage={stage} />}
         {runMessage && <p className="mt-3 text-sm text-[var(--bone)]">{runMessage}</p>}
       </div>
-    </AppShell>
+    </>
   );
 }

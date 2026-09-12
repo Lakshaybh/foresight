@@ -1,15 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { AppShell } from "@/components/app-shell";
-import { AdminNav } from "@/components/admin-nav";
+import { PageHeader } from "@/components/page-header";
 
+// Auth is already guaranteed by admin/layout.tsx — no need to re-check here.
 export default async function AdminPaymentsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
 
   const [{ data: payments }, { data: accounts }] = await Promise.all([
     supabase
@@ -22,7 +16,8 @@ export default async function AdminPaymentsPage() {
   const emailByUserId = new Map((accounts ?? []).map((a) => [a.user_id, a.email]));
 
   return (
-    <AppShell title="Command Center" email={user.email} nav={<AdminNav />}>
+    <>
+      <PageHeader title="Payments" />
       <p className="mb-4 text-sm text-[var(--bone-dim)]">
         Every manually recorded payment, newest first — the audit trail behind each access grant.
       </p>
@@ -30,7 +25,7 @@ export default async function AdminPaymentsPage() {
       {!payments || payments.length === 0 ? (
         <p className="mt-8 text-center text-sm text-[var(--bone-dim)]">No payments recorded yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-[var(--line)]">
+        <div className="overflow-x-auto rounded-[8px] border border-[var(--line)]">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--line)] text-left text-[11px] uppercase tracking-wide text-[var(--bone-dim)]">
@@ -61,6 +56,6 @@ export default async function AdminPaymentsPage() {
           </table>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

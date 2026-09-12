@@ -1,4 +1,4 @@
-import { Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import { SmoothScrollProvider } from "@/lib/smooth-scroll";
 import { AbstractBackground } from "@/components/marketing/abstract-background";
 import { SiteNav } from "@/components/marketing/site-nav";
@@ -13,24 +13,19 @@ import { HeroScene } from "@/components/marketing/hero-scene";
 import { SystemFlowchart } from "@/components/marketing/system-flowchart";
 import { TermsModal } from "@/components/terms-modal";
 
-const spaceGrotesk = Space_Grotesk({
+const inter = Inter({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-});
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
 });
 
 function Eyebrow({ n, children }: { n: string; children: React.ReactNode }) {
   return (
     <span
       data-reveal
-      className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--accent)]"
+      className="inline-flex items-center gap-2 text-[14px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]"
     >
-      <span className="text-[var(--bone-dim)]">SIGNAL {n} —</span> {children}
+      <span className="text-[var(--mute)]">Signal {n} —</span> {children}
     </span>
   );
 }
@@ -65,7 +60,7 @@ const SEGMENTS = [
 
 export default function HomePage() {
   return (
-    <div className={`${spaceGrotesk.variable} ${plexMono.variable} theme-cream font-[family-name:var(--font-display)]`}>
+    <div className={`${inter.variable} theme-volt font-[family-name:var(--font-display)]`}>
       <SmoothScrollProvider>
         <main className="relative overflow-x-clip">
           <AbstractBackground />
@@ -82,9 +77,9 @@ export default function HomePage() {
               <div className="max-w-md">
                 <ScrambleLine
                   text="DETECT · EXPLAIN · RECOMMEND · TRACK"
-                  className="text-[10px] tracking-[0.3em] text-[var(--accent)]"
+                  className="text-[14px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]"
                 />
-                <HeroHeadline className="mt-5 text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-[var(--bone)] sm:text-5xl">
+                <HeroHeadline className="mt-5 text-[40px] font-normal leading-[1.05] tracking-[-0.02em] text-balance text-[var(--bone-strong)] sm:text-[60px] sm:leading-[1]">
                   Know what happens{" "}
                   <span style={{ color: "var(--accent)" }}>next.</span>
                 </HeroHeadline>
@@ -102,7 +97,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="page-intro page-intro-delay-2">
+              <div className="page-intro page-intro-delay-2 rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-6 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.8)]">
                 <SystemFlowchart />
               </div>
             </div>
@@ -113,7 +108,7 @@ export default function HomePage() {
             <div className="mx-auto max-w-5xl">
               <RevealSection className="mx-auto max-w-xl text-center">
                 <div data-reveal><Eyebrow n="00">The change</Eyebrow></div>
-                <h2 data-reveal className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
+                <h2 data-reveal className="mt-4 text-[28px] font-normal tracking-[-0.02em] text-balance text-[var(--bone-strong)] sm:text-[36px]">
                   What you&apos;ve been missing — and what changes now.
                 </h2>
                 <p data-reveal className="mt-4 text-[var(--bone-dim)]">
@@ -167,7 +162,7 @@ export default function HomePage() {
 
               <RevealSection className="mt-16" stagger={0.1}>
                 <div data-reveal className="text-center">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--bone-dim)]">
+                  <span className="text-[14px] font-semibold uppercase tracking-[0.18em] text-[var(--mute)]">
                     What we&apos;re building
                   </span>
                 </div>
@@ -179,13 +174,13 @@ export default function HomePage() {
                           <span
                             className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] ${
                               item.status === "Live"
-                                ? "bg-[var(--teal)]/15 text-[var(--teal)]"
-                                : "bg-[var(--amber)]/15 text-[var(--amber)]"
+                                ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                                : "bg-[var(--bone)]/10 text-[var(--mute)]"
                             }`}
                           >
                             {item.status}
                           </span>
-                          <h3 className="font-medium text-[var(--bone)]">{item.title}</h3>
+                          <h3 className="text-[20px] font-semibold text-[var(--bone-strong)]">{item.title}</h3>
                           <p className="text-sm text-[var(--bone-dim)]">{item.body}</p>
                         </div>
                       </BezelCard>
@@ -197,11 +192,11 @@ export default function HomePage() {
           </section>
 
           {/* How we actually work — the real pipeline, not an abstract diagram */}
-          <section id="how-it-works" className="relative z-10 border-t border-[var(--line)] px-4 py-24 sm:py-32">
+          <section id="how-it-works" className="relative z-10 border-t border-dashed border-[rgba(140,148,166,0.35)] px-4 py-24 sm:py-32">
             <div className="mx-auto max-w-6xl">
               <RevealSection className="mx-auto max-w-xl text-center">
                 <Eyebrow n="01">How we work</Eyebrow>
-                <h2 data-reveal className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
+                <h2 data-reveal className="mt-4 text-[28px] font-normal tracking-[-0.02em] text-balance text-[var(--bone-strong)] sm:text-[36px]">
                   Your data is messy. What comes out the other side isn&apos;t.
                 </h2>
                 <p data-reveal className="mt-4 text-[var(--bone-dim)]">
@@ -218,10 +213,10 @@ export default function HomePage() {
           </section>
 
           {/* Proof — real numbers from the validation dataset */}
-          <section className="relative z-10 border-t border-[var(--line)] px-4 py-16 sm:py-20">
+          <section className="relative z-10 border-t border-dashed border-[rgba(140,148,166,0.35)] px-4 py-16 sm:py-20">
             <RevealSection className="mx-auto max-w-4xl" stagger={0.08}>
               <div data-reveal className="text-center">
-                <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--bone-dim)]">
+                <span className="text-[14px] font-semibold uppercase tracking-[0.18em] text-[var(--mute)]">
                   Proven before you ever see it
                 </span>
               </div>
@@ -253,11 +248,11 @@ export default function HomePage() {
           </section>
 
           {/* Evidence / credibility */}
-          <section id="evidence" className="relative z-10 border-t border-[var(--line)] px-4 py-24 sm:py-32">
+          <section id="evidence" className="relative z-10 border-t border-dashed border-[rgba(140,148,166,0.35)] px-4 py-24 sm:py-32">
             <div className="mx-auto grid max-w-5xl items-center gap-12 sm:grid-cols-2">
               <RevealSection stagger={0.1}>
                 <div data-reveal><Eyebrow n="02">No black box</Eyebrow></div>
-                <h2 data-reveal className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
+                <h2 data-reveal className="mt-4 text-[28px] font-normal tracking-[-0.02em] text-balance text-[var(--bone-strong)] sm:text-[36px]">
                   You&apos;re right not to trust a black box. So we don&apos;t build one.
                 </h2>
                 <p data-reveal className="mt-4 text-[var(--bone-dim)]">
@@ -319,11 +314,11 @@ export default function HomePage() {
           </section>
 
           {/* Pricing */}
-          <section id="pricing" className="relative z-10 border-t border-[var(--line)] px-4 py-24 sm:py-32">
+          <section id="pricing" className="relative z-10 border-t border-dashed border-[rgba(140,148,166,0.35)] px-4 py-24 sm:py-32">
             <div className="mx-auto max-w-5xl">
               <RevealSection className="mx-auto max-w-xl text-center">
                 <span className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--accent)]">Pricing</span>
-                <h2 className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
+                <h2 className="mt-4 text-[28px] font-normal tracking-[-0.02em] text-balance text-[var(--bone-strong)] sm:text-[36px]">
                   Simple pricing, no free tier to outgrow.
                 </h2>
                 <p className="mt-4 text-[var(--bone-dim)]">
@@ -360,10 +355,9 @@ export default function HomePage() {
                     <div
                       className={
                         plan.emphasis
-                          ? "flex h-full flex-col rounded-2xl p-7 text-[var(--bone)] shadow-[0_20px_50px_-20px_var(--accent-dim)] ring-1 ring-[var(--accent)]/30"
-                          : "flex h-full flex-col rounded-2xl bg-[var(--void-2)] p-7 ring-1 ring-[var(--line)]"
+                          ? "flex h-full flex-col rounded-[8px] bg-[var(--void-2)] p-7 text-[var(--bone)] border-2 border-[var(--accent)]"
+                          : "flex h-full flex-col rounded-[8px] bg-[var(--void-2)] p-7 border border-[var(--line)]"
                       }
-                      style={plan.emphasis ? { backgroundColor: "var(--void)" } : undefined}
                     >
                       {plan.emphasis && (
                         <span className="mb-4 w-fit rounded-full bg-[var(--accent)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--void)]">
@@ -372,7 +366,7 @@ export default function HomePage() {
                       )}
                       <p className="text-sm font-semibold uppercase tracking-wide text-[var(--bone-dim)]">{plan.name}</p>
                       <p className="mt-2 flex items-baseline gap-1">
-                        <span className="text-4xl font-semibold tracking-tight text-[var(--bone)]">${plan.price}</span>
+                        <span className="font-mono text-4xl font-semibold tracking-tight text-[var(--bone-strong)]">${plan.price}</span>
                         <span className="text-sm text-[var(--bone-dim)]">/month</span>
                       </p>
                       <p className="mt-2 text-sm text-[var(--bone-dim)]">{plan.tagline}</p>
@@ -390,8 +384,8 @@ export default function HomePage() {
                         href="/login"
                         className={
                           plan.emphasis
-                            ? "mt-7 block rounded-xl bg-[var(--accent)] py-3 text-center text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all hover:brightness-110"
-                            : "mt-7 block rounded-xl border border-[var(--line)] py-3 text-center text-sm font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05]"
+                            ? "mt-7 block rounded-[6px] bg-[var(--accent)] py-3 text-center text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all hover:brightness-110"
+                            : "mt-7 block rounded-[6px] border border-[var(--line)] py-3 text-center text-sm font-medium text-[var(--bone)] transition-all hover:bg-[var(--bone)]/[0.05]"
                         }
                       >
                         Request access
@@ -404,11 +398,11 @@ export default function HomePage() {
           </section>
 
           {/* Who it's for */}
-          <section id="who-its-for" className="relative z-10 border-t border-[var(--line)] px-4 py-24 sm:py-32">
+          <section id="who-its-for" className="relative z-10 border-t border-dashed border-[rgba(140,148,166,0.35)] px-4 py-24 sm:py-32">
             <div className="mx-auto max-w-5xl">
               <RevealSection className="mx-auto max-w-xl text-center">
                 <div data-reveal><Eyebrow n="03">Built for</Eyebrow></div>
-                <h2 data-reveal className="mt-4 text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
+                <h2 data-reveal className="mt-4 text-[28px] font-normal tracking-[-0.02em] text-balance text-[var(--bone-strong)] sm:text-[36px]">
                   If any of this sounds familiar, we built this for you.
                 </h2>
               </RevealSection>
@@ -423,7 +417,7 @@ export default function HomePage() {
                   >
                     <BezelCard className="h-full">
                       <div className="h-full p-6">
-                        <h3 className="font-medium text-[var(--bone)]">{seg.title}</h3>
+                        <h3 className="text-[20px] font-semibold text-[var(--bone-strong)]">{seg.title}</h3>
                         <p className="mt-2 text-sm text-[var(--bone-dim)]">{seg.body}</p>
                       </div>
                     </BezelCard>
@@ -434,9 +428,9 @@ export default function HomePage() {
           </section>
 
           {/* Closing CTA */}
-          <section className="relative z-10 border-t border-[var(--line)] px-4 pb-32 pt-24">
+          <section className="relative z-10 border-t border-dashed border-[rgba(140,148,166,0.35)] px-4 pb-32 pt-24">
             <RevealSection className="mx-auto max-w-2xl text-center">
-              <h2 data-reveal className="text-3xl font-semibold tracking-tight text-balance text-[var(--bone)] sm:text-4xl">
+              <h2 data-reveal className="text-[28px] font-normal tracking-[-0.02em] text-balance text-[var(--bone-strong)] sm:text-[36px]">
                 Bring your own data. Let&apos;s see what it&apos;s been trying to tell you.
               </h2>
               <p data-reveal className="mx-auto mt-4 max-w-md text-[var(--bone-dim)]">

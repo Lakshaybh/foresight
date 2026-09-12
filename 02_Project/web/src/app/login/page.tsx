@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Inter } from "next/font/google";
 import { createClient } from "@/lib/supabase/client";
 import { apiFetchPublic } from "@/lib/api";
 import { AbstractBackground } from "@/components/marketing/abstract-background";
@@ -11,6 +12,12 @@ import { RevealSection } from "@/components/marketing/reveal-section";
 import { LoginInfographic } from "@/components/marketing/login-infographic";
 import { TermsModal } from "@/components/terms-modal";
 import { IconInput } from "@/components/icon-input";
+
+const inter = Inter({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
 
 function GoogleMark() {
   return (
@@ -81,8 +88,8 @@ function AuthButton({
       disabled={disabled}
       className={
         primary
-          ? "flex w-full items-center justify-center gap-3 rounded-xl bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-          : "flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--line)] bg-transparent py-3 text-sm font-medium text-[var(--bone)] transition-all duration-300 hover:bg-[var(--bone)]/[0.05] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1"
+          ? "flex w-full items-center justify-center gap-3 rounded-[6px] bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          : "flex w-full items-center justify-center gap-3 rounded-[6px] border border-[var(--line)] bg-transparent py-3 text-sm font-medium text-[var(--bone)] transition-all duration-300 hover:bg-[var(--bone)]/[0.05] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1"
       }
     >
       {icon}
@@ -92,7 +99,7 @@ function AuthButton({
 }
 
 const submitClass =
-  "w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-[6px] bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60";
 
 type EmailStep = "closed" | "email" | "otp" | "set-password" | "password";
 
@@ -322,12 +329,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="theme-cream relative flex h-[100dvh] flex-col overflow-hidden font-[family-name:var(--font-display)]">
+    <div className={`${inter.variable} theme-volt relative flex h-[100dvh] flex-col overflow-hidden font-[family-name:var(--font-display)]`}>
       <AbstractBackground />
 
       <Link
         href="/"
-        className="page-intro absolute left-6 top-6 z-30 flex items-center gap-2 font-mono text-sm font-medium tracking-tight text-[var(--bone)]"
+        className="page-intro absolute left-6 top-6 z-30 flex items-center gap-2 font-mono text-sm font-medium tracking-tight text-[var(--bone-strong)]"
       >
         <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
         Foresight
@@ -341,7 +348,7 @@ export default function LoginPage() {
         <RevealSection className="max-w-md text-center" stagger={0.08}>
           <h1
             data-reveal
-            className="text-3xl font-semibold leading-[1.05] tracking-tight text-balance text-[var(--bone)] sm:text-4xl"
+            className="text-[28px] font-normal leading-[1.05] tracking-[-0.02em] text-balance text-[var(--bone-strong)] sm:text-[36px]"
           >
             Know what happens{" "}
             <span style={{ color: "var(--accent)" }}>next.</span>
@@ -360,7 +367,7 @@ export default function LoginPage() {
       <RevealSection className="fixed inset-x-0 bottom-0 z-20 flex justify-center px-0" y={32}>
         <div
           data-reveal
-          className="max-h-[65dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-b-0 border-[var(--accent)]/15 bg-[var(--void-2)]/95 px-6 pb-6 pt-5 shadow-[0_-30px_70px_-20px_rgba(51,44,124,0.25)] backdrop-blur-xl sm:px-9"
+          className="max-h-[65dvh] w-full max-w-md overflow-y-auto rounded-t-[8px] border border-b-0 border-[var(--line)] bg-[var(--void-2)]/95 px-6 pb-6 pt-5 shadow-[0_-30px_70px_-20px_var(--accent-dim)] backdrop-blur-xl sm:px-9"
         >
           <p className="text-center text-sm text-[var(--bone-dim)]">
             New accounts are reviewed before access is granted.

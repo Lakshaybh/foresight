@@ -1,8 +1,31 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 // Public: no session required at all.
 const PUBLIC_PATHS = new Set(["/", "/login", "/auth/callback"]);
+
+// Verifies the session's JWT signature locally against Supabase's public
+// JWKS (same asymmetric-key trust used by the FastAPI backend's own
+// get_current_user_id, see api/app/auth.py) instead of calling
+// supabase.auth.getUser(), which round-trips to Supabase's Auth server on
+// every single request. createRemoteJWKSet caches the public keys across
+// invocations, so this becomes a real network call only occasionally
+// (cache miss / key rotation), not on every navigation — the actual fix
+// for the multi-hundred-ms lag between pages this middleware runs on.
+const jwks = createRemoteJWKSet(new URL(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
+
+async function verifiedUserId(accessToken: string): Promise<string | null> {
+  try {
+    const { payload } = await jwtVerify(accessToken, jwks, {
+      issuer: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`,
+      audience: "authenticated",
+    });
+    return typeof payload.sub === "string" ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -49,19 +72,23 @@ export async function proxy(request: NextRequest) {
     }
   );
 
+  // getSession() reads the already-parsed cookie with no network call;
+  // jwtVerify above supplies the cryptographic proof that getUser() would
+  // otherwise fetch from Supabase's server on every request.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const userId = session ? await verifiedUserId(session.access_token) : null;
 
   // Setting a new password is orthogonal to onboarding status — a recovery
   // link creates a session before terms/approval have anything to say about
   // it, so this path is exempt from every gate below. No session at all
   // means the link was invalid/expired; send them to log in normally.
   if (path === "/auth/reset-password") {
-    return user ? response : NextResponse.redirect(new URL("/login", request.url));
+    return userId ? response : NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (!user) {
+  if (!userId) {
     if (!PUBLIC_PATHS.has(path)) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
@@ -76,9 +103,9 @@ export async function proxy(request: NextRequest) {
     supabase
       .from("user_account")
       .select("role, status, terms_accepted_at, access_expires_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle(),
-    supabase.from("business_profile").select("user_id").eq("user_id", user.id).maybeSingle(),
+    supabase.from("business_profile").select("user_id").eq("user_id", userId).maybeSingle(),
   ]);
 
   // The signup trigger runs synchronously on auth.users insert, but be

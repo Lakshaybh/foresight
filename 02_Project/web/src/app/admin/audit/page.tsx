@@ -1,7 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { AppShell } from "@/components/app-shell";
-import { AdminNav } from "@/components/admin-nav";
+import { PageHeader } from "@/components/page-header";
 
 const ACTION_LABELS: Record<string, string> = {
   approved: "Approved account",
@@ -11,13 +9,9 @@ const ACTION_LABELS: Record<string, string> = {
   set_admin_notes: "Updated notes",
 };
 
+// Auth is already guaranteed by admin/layout.tsx — no need to re-check here.
 export default async function AdminAuditPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
 
   const [{ data: logs }, { data: accounts }] = await Promise.all([
     supabase
@@ -31,7 +25,8 @@ export default async function AdminAuditPage() {
   const emailByUserId = new Map((accounts ?? []).map((a) => [a.user_id, a.email]));
 
   return (
-    <AppShell title="Command Center" email={user.email} nav={<AdminNav />}>
+    <>
+      <PageHeader title="Audit log" />
       <p className="mb-4 text-sm text-[var(--bone-dim)]">
         Every admin action, newest first — most recent 200.
       </p>
@@ -41,7 +36,7 @@ export default async function AdminAuditPage() {
       ) : (
         <div className="space-y-2">
           {logs.map((l) => (
-            <div key={l.log_id} className="flex items-start justify-between gap-4 rounded-xl border border-[var(--line)] bg-[var(--void-2)] px-4 py-3">
+            <div key={l.log_id} className="flex items-start justify-between gap-4 rounded-[8px] border border-[var(--line)] bg-[var(--void-2)] px-4 py-3">
               <div>
                 <p className="text-sm text-[var(--bone)]">
                   <span className="font-medium">{emailByUserId.get(l.performed_by_user_id) ?? "unknown"}</span>{" "}
@@ -66,6 +61,6 @@ export default async function AdminAuditPage() {
           ))}
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

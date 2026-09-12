@@ -150,7 +150,9 @@
   --void: #c9a0dc;
   --void-2: #fffdf8;
   --bone: #1c1a17;
+  --bone-strong: #1c1a17;
   --bone-dim: #6b6459;
+  --mute: #6b6459;
   --line: rgba(28, 26, 23, 0.1);
 
   --accent: #332c7c;
@@ -166,6 +168,72 @@
 
   color: var(--bone);
   background: var(--void);
+}
+
+/* Homepage-only theme: a documentation-engineering system (dark canvas,
+   single electric-green accent, hairline-bordered chrome instead of
+   shadows) — scoped to .theme-volt so the rest of the product (login,
+   dashboard, admin) keeps the cream theme untouched. Same variable names
+   as .theme-cream so every shared component (CtaButton, BezelCard,
+   HeroScene, SystemFlowchart, AbstractBackground) repaints automatically
+   without code changes — only the values differ.
+
+   --void doubles as both the page canvas AND the "text-on-accent" color
+   (CtaButton's primary label, SystemFlowchart's active-node icon) — on
+   this theme that's correct by construction: canvas is near-black, and
+   near-black text on the green accent is exactly the spec's on-primary
+   color, not a coincidence. */
+.theme-volt {
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  --void: #101010;
+  --void-2: #101010;
+  --surface-soft: #1a1a1a;
+  --bone: #f2f2f2;
+  --bone-strong: #ffffff;
+  --bone-dim: #bdbdbd;
+  --mute: #8b949e;
+  --line: #3d3a39;
+
+  --accent: #00d992;
+  --accent-2: #2fd6a1;
+  --accent-deep: #10b981;
+  --accent-dim: rgba(0, 217, 146, 0.35);
+  --accent-wash: rgba(0, 217, 146, 0.08);
+
+  --teal: #00d992;
+  --amber: #c9a13b;
+  --orange: #d97757;
+
+  color: var(--bone);
+  /* A soft ambient light source, not a flat fill — two low-opacity glows
+     (green top-center, near the nav/hero; a dimmer cool one lower-left)
+     keep the canvas from reading as inert black. Fixed to the viewport so
+     it reads as one continuous light source behind the page, not a
+     per-section repeat. */
+  background: var(--void);
+}
+
+.theme-volt::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 40% at 50% 0%, rgba(0, 217, 146, 0.16), transparent 70%),
+    radial-gradient(45% 35% at 10% 65%, rgba(0, 217, 146, 0.06), transparent 70%);
+}
+
+/* Faint organic grain, the same role the stone-texture photo plays in the
+   reference site — depth behind the hero content without a stock photo. */
+.hero-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
 }
 
 /* One-time page-load entrance, homepage only — pure CSS (no JS animation

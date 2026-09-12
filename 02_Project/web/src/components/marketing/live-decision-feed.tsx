@@ -55,7 +55,7 @@ function Row({ e }: { e: (typeof EVENTS)[number] }) {
 
 export function LiveDecisionFeed() {
   return (
-    <div className="mx-auto max-w-2xl overflow-hidden rounded-[2rem] bg-[var(--void-2)] shadow-[0_1px_2px_rgba(28,26,23,0.04),0_30px_60px_-30px_rgba(28,26,23,0.22)]">
+    <div className="mx-auto max-w-2xl overflow-hidden rounded-[8px] border border-[var(--line)] bg-[var(--void-2)]">
       <div className="flex items-center gap-2 border-b border-[var(--line)] px-6 py-4">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--teal)] opacity-60" />

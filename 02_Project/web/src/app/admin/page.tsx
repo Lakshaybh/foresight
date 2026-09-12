@@ -1,7 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { AppShell } from "@/components/app-shell";
-import { AdminNav } from "@/components/admin-nav";
+import { PageHeader } from "@/components/page-header";
 import { AdminStatCard } from "@/components/admin-stat-card";
 import { AdminUserList } from "@/components/admin-user-list";
 
@@ -28,14 +26,10 @@ async function fetchPlatformImpact(accessToken: string): Promise<PlatformImpact 
   }
 }
 
+// Auth (and the admin-role gate) is already guaranteed by admin/layout.tsx
+// and proxy.ts — no need to re-check here.
 export default async function AdminPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -79,7 +73,8 @@ export default async function AdminPage() {
       : [...revenueByCurrency.entries()].map(([c, amt]) => `${c} ${amt.toLocaleString()}`).join(" · ");
 
   return (
-    <AppShell title="Command Center" email={user.email} nav={<AdminNav />}>
+    <>
+      <PageHeader title="Command center" />
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <AdminStatCard label="Total accounts" value={accounts?.length ?? 0} />
         <AdminStatCard label="Pending review" value={pendingCount} />
@@ -112,6 +107,6 @@ export default async function AdminPage() {
         Approve or reject accounts waiting for access.
       </p>
       <AdminUserList initialAccounts={accountsWithProfile} />
-    </AppShell>
+    </>
   );
 }

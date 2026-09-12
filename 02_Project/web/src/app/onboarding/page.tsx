@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Inter } from "next/font/google";
 import { createClient } from "@/lib/supabase/client";
 import { AuthShell } from "@/components/auth-shell";
 import { OnboardingSignOutButton } from "@/components/onboarding-signout-button";
@@ -18,6 +19,12 @@ const BUSINESS_TYPES = [
 ];
 
 const TEAM_SIZES = ["1-5", "6-20", "21-50", "51+"];
+
+const inter = Inter({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
 
 const PLANS = [
   { value: "starter", label: "Starter", price: "$20/mo" },
@@ -123,15 +130,16 @@ export default function OnboardingPage() {
   }
 
   return (
-    <AuthShell topRight={<OnboardingSignOutButton />}>
+    <div className={inter.variable}>
+    <AuthShell theme="volt" topRight={<OnboardingSignOutButton />}>
       <RevealSection stagger={0.06}>
-        <div data-reveal className="rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-8 sm:p-10">
+        <div data-reveal className="rounded-[8px] border border-[var(--line)] bg-[var(--void-2)] p-8 sm:p-10">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--void)]">
               <BuildingMark />
             </span>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--bone)]">Tell us about your business</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-[var(--bone-strong)]">Tell us about your business</h1>
               <p className="text-sm text-[var(--bone-dim)]">
                 The more specific, the faster your request gets judged.
               </p>
@@ -255,7 +263,7 @@ export default function OnboardingPage() {
                     key={p.value}
                     type="button"
                     onClick={() => setPlan(p.value)}
-                    className={`rounded-xl border px-3.5 py-3 text-left transition-all duration-300 ${
+                    className={`rounded-[6px] border px-3.5 py-3 text-left transition-all duration-300 ${
                       plan === p.value
                         ? "border-[var(--accent)] bg-[var(--accent)]/10"
                         : "border-[var(--line)] hover:border-[var(--bone)]/30"
@@ -276,7 +284,7 @@ export default function OnboardingPage() {
             <button
               type="submit"
               disabled={!canSubmit || submitting}
-              className="w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-[6px] bg-[var(--accent)] py-3 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "Submitting..." : "Continue"}
             </button>
@@ -284,5 +292,6 @@ export default function OnboardingPage() {
         </div>
       </RevealSection>
     </AuthShell>
+    </div>
   );
 }

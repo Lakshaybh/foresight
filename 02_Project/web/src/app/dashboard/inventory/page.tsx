@@ -2,12 +2,10 @@
 
 import React, { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AppShell } from "@/components/app-shell";
-import { DashboardNav } from "@/components/dashboard-nav";
+import { PageHeader } from "@/components/page-header";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { TrendChart } from "@/components/trend-chart";
 import { apiFetch, withTenant } from "@/lib/api";
-import { createClient } from "@/lib/supabase/client";
 
 type InventoryItem = {
   product_id: string;
@@ -65,23 +63,19 @@ function InventoryPageInner() {
   const asTenant = searchParams.get("as_tenant");
   const tenantEmail = searchParams.get("tenant_email");
 
-  const [email, setEmail] = useState<string | undefined>();
   const [items, setItems] = useState<InventoryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
-    createClient()
-      .auth.getUser()
-      .then(({ data }) => setEmail(data.user?.email));
-
     apiFetch<InventoryItem[]>(withTenant("/inventory", asTenant))
       .then(setItems)
       .catch((e) => setError((e as Error).message));
   }, [asTenant]);
 
   return (
-    <AppShell title="Inventory" email={email} nav={<DashboardNav />}>
+    <>
+      <PageHeader title="Inventory" />
       <ImpersonationBanner email={tenantEmail} />
 
       <p className="mb-6 text-sm text-[var(--bone-dim)]">
@@ -138,7 +132,7 @@ function InventoryPageInner() {
           </table>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }
 

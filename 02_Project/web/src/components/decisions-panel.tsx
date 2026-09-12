@@ -84,7 +84,7 @@ function StatusPill({ status }: { status: string }) {
 
 function StatTile({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-4">
+    <div className="rounded-[8px] border border-[var(--line)] bg-[var(--void-2)] p-4">
       <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--bone-dim)]">{label}</p>
       <p className="mt-1.5 text-xl font-semibold" style={color ? { color } : undefined}>
         {value}
@@ -99,7 +99,7 @@ function money(n: number): string {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] px-6 py-20 text-center">
+    <div className="flex flex-col items-center justify-center rounded-[8px] border border-dashed border-[var(--line)] px-6 py-20 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)]/10">
         <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 text-[var(--accent)]">
           <path d="M12 3v4M12 17v4M3 12h4M17 12h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -113,7 +113,7 @@ function EmptyState() {
       </p>
       <Link
         href="/dashboard/upload"
-        className="mt-5 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all hover:brightness-110"
+        className="mt-5 rounded-[6px] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--void)] shadow-[0_0_30px_-10px_var(--accent-dim)] transition-all hover:brightness-110"
       >
         Connect your data
       </Link>
@@ -140,7 +140,7 @@ function DecisionCard({
 }) {
   const u = urgency(d.confidence);
   return (
-    <div className="flex gap-3.5 rounded-2xl border border-[var(--line)] bg-[var(--void-2)] p-5">
+    <div className="flex gap-3.5 rounded-[8px] border border-[var(--line)] bg-[var(--void-2)] p-5">
       <span className="w-1 shrink-0 rounded-full" style={{ background: u.color }} aria-hidden />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center justify-between gap-3">

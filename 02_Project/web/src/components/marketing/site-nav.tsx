@@ -16,14 +16,14 @@ export function SiteNav() {
 
   return (
     <>
-      <nav className="fixed inset-x-0 top-6 z-50 flex justify-center px-4">
-        <div className="flex w-full max-w-4xl items-center justify-between gap-4 rounded-full border border-[var(--line)] bg-[var(--void-2)]/70 px-5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.2),0_20px_50px_-24px_rgba(0,0,0,0.6)] backdrop-blur-xl">
-          <Link href="/" className="flex items-center gap-2 pl-1 font-mono text-sm font-medium tracking-tight text-[var(--bone)]">
+      <nav className="fixed inset-x-0 top-0 z-50 border-b border-[var(--line)] bg-[var(--void)]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-8">
+          <Link href="/" className="flex items-center gap-2 font-mono text-sm font-medium tracking-tight text-[var(--bone-strong)]">
             <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
             Foresight
           </Link>
 
-          <div className="hidden items-center gap-6 text-sm text-[var(--bone-dim)] sm:flex">
+          <div className="hidden items-center gap-7 text-sm text-[var(--bone-dim)] sm:flex">
             {LINKS.map((link) => (
               <a
                 key={link.href}
@@ -35,16 +35,16 @@ export function SiteNav() {
             ))}
           </div>
 
-          <div className="hidden items-center gap-2 sm:flex">
+          <div className="hidden items-center gap-5 sm:flex">
             <a
               href="#pricing"
-              className="rounded-full border border-[var(--teal)]/40 px-3 py-1.5 text-sm font-medium text-[var(--teal)] transition-colors duration-300 hover:bg-[var(--teal)]/10"
+              className="text-sm font-medium text-[var(--accent-2)] transition-colors duration-300 hover:text-[var(--accent)]"
             >
               Pricing
             </a>
             <Link
               href="/login"
-              className="rounded-full px-3 py-1.5 text-sm text-[var(--bone-dim)] transition-colors duration-300 hover:text-[var(--bone)]"
+              className="text-sm text-[var(--bone-dim)] transition-colors duration-300 hover:text-[var(--bone)]"
             >
               Sign in
             </Link>
